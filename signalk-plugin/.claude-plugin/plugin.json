@@ -1,0 +1,8 @@
+{
+  "name": "signalk-plugin",
+  "description": "Author and publish a SignalK server plugin: the @signalk/server-api patterns that work + npm OIDC trusted publishing.",
+  "version": "0.1.0",
+  "author": { "name": "Bryan Clark" },
+  "license": "MIT",
+  "keywords": ["signalk", "marine", "npm", "publishing"]
+}

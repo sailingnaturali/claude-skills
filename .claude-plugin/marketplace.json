@@ -1,0 +1,18 @@
+{
+  "name": "sailingnaturali",
+  "owner": {
+    "name": "Sailing Naturali",
+    "url": "https://github.com/sailingnaturali"
+  },
+  "plugins": [
+    {
+      "name": "signalk-plugin",
+      "source": "./signalk-plugin",
+      "description": "Author and publish a SignalK server plugin — the @signalk/server-api patterns that work (resource provider vs router, deltas, position), the npm scaffold, and OIDC trusted publishing.",
+      "author": { "name": "Bryan Clark" },
+      "repository": "https://github.com/sailingnaturali/claude-skills",
+      "license": "MIT",
+      "keywords": ["signalk", "marine", "npm", "publishing", "plugin"]
+    }
+  ]
+}
