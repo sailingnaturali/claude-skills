@@ -8,7 +8,7 @@ marine-AI stack.
 
 ```
 /plugin marketplace add sailingnaturali/claude-skills
-/plugin install signalk-plugin@sailingnaturali
+/plugin install signalk-plugin@sailingnaturali     # or npm-oidc-publish@…, debug-mcp-agent@…
 ```
 
 ## Plugins
@@ -19,6 +19,17 @@ Authoring and publishing a [SignalK](https://signalk.org) server plugin to npm �
 admin-gated router; deltas; vessel position), the package scaffold, npm **OIDC trusted
 publishing** (including the new-package first-publish chicken-and-egg), and the Docker
 `node_modules` / `EBUSY` install gotcha.
+
+### `npm-oidc-publish`
+Publishing **any** npm package from GitHub Actions via **OIDC trusted publishing** — no
+`NPM_TOKEN`, no OTP in CI. The release-triggered workflow, the new-package first-publish
+chicken-and-egg (CLI+OTP once, then configure the trusted publisher), and the
+registry-propagation 404 gotcha.
+
+### `debug-mcp-agent`
+Debugging an MCP / tool-backed AI agent by **probing ground truth before trusting its
+self-report**: 404-vs-error, which-model-is-driving, server-down vs missing-data,
+auth-vs-absence.
 
 ## License
 
