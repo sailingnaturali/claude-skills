@@ -1,0 +1,8 @@
+{
+  "name": "debug-mcp-agent",
+  "description": "Debug an MCP / tool-backed AI agent: probe ground truth before trusting the agent's account of itself.",
+  "version": "0.1.0",
+  "author": { "name": "Bryan Clark" },
+  "license": "MIT",
+  "keywords": ["mcp", "agent", "debugging", "ai", "tools"]
+}

@@ -13,6 +13,24 @@
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
       "keywords": ["signalk", "marine", "npm", "publishing", "plugin"]
+    },
+    {
+      "name": "npm-oidc-publish",
+      "source": "./npm-oidc-publish",
+      "description": "Publish an npm package from GitHub Actions via OIDC trusted publishing — no NPM_TOKEN, no OTP in CI; the new-package first-publish flow and the registry-propagation 404 gotcha.",
+      "author": { "name": "Bryan Clark" },
+      "repository": "https://github.com/sailingnaturali/claude-skills",
+      "license": "MIT",
+      "keywords": ["npm", "publishing", "oidc", "github-actions", "ci"]
+    },
+    {
+      "name": "debug-mcp-agent",
+      "source": "./debug-mcp-agent",
+      "description": "Debug an MCP / tool-backed AI agent: probe ground truth before trusting the agent's account of itself (404-vs-error, which-model, server-down vs missing-data, auth-vs-absence).",
+      "author": { "name": "Bryan Clark" },
+      "repository": "https://github.com/sailingnaturali/claude-skills",
+      "license": "MIT",
+      "keywords": ["mcp", "agent", "debugging", "ai", "tools"]
     }
   ]
 }

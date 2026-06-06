@@ -1,0 +1,8 @@
+{
+  "name": "npm-oidc-publish",
+  "description": "Publish an npm package from GitHub Actions via OIDC trusted publishing — no NPM_TOKEN, no OTP in CI.",
+  "version": "0.1.0",
+  "author": { "name": "Bryan Clark" },
+  "license": "MIT",
+  "keywords": ["npm", "publishing", "oidc", "github-actions", "ci"]
+}

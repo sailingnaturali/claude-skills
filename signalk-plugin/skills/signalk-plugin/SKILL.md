@@ -37,27 +37,14 @@ For a scoped package add `"publishConfig": { "access": "public" }`. For TypeScri
 - Provide a config `schema` (an object, or `() => ({...})`). Do periodic work in `setInterval`, and wrap each cycle — and each independent step inside it — in `try/catch` → `app.error(...)`, so one failing fetch can't blank everything else or kill the loop.
 - **Avoid an `express` runtime dependency**: register routes on the `IRouter` the server hands you via `registerWithRouter`, or use the resource API; keep `@types/express` dev-only via `import type` (erased at build).
 
-## 3. npm OIDC trusted publishing (no tokens/OTP after the first release)
+## 3. Publish to npm
 
-`.github/workflows/publish.yml`:
-```yaml
-name: publish
-on: { release: { types: [published] } }
-permissions: { contents: read, id-token: write } # npm trusted publishing (OIDC)
-jobs:
-  publish:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 24 }
-      - run: npm ci          # needs a committed package-lock.json (run `npm install` once)
-      - run: npm test
-      - run: npm publish
-```
-- **A brand-new package can't publish via OIDC on the first try** — npm won't let you configure a trusted publisher for a package that doesn't exist yet. So publish `0.1.0` **once via the CLI** (`npm publish` → enter your 2FA OTP), *then* on npmjs.com → the package → Settings → **Trusted Publisher** → GitHub Actions: your repo + workflow filename `publish.yml` + blank environment.
-- After that, every release publishes hands-free: `gh release create vX.Y.Z --notes "..."`.
-- npm's public registry metadata lags a few minutes for a new scoped package — the npmjs.com website shows it first, so a `npm view` / registry GET returning 404 right after a successful `+ <pkg>@<ver>` is just propagation, not a failure.
+Ship via **OIDC trusted publishing** so each GitHub release auto-publishes with no token/OTP.
+The full flow — the release-triggered `publish.yml`, the new-package first-publish
+chicken-and-egg (CLI+OTP once, then configure the trusted publisher), and the
+registry-propagation 404 gotcha — is in the **`npm-oidc-publish`** skill in this marketplace.
+SignalK-specific bits: the `signalk-node-server-plugin` keyword is what surfaces the package
+in the app store, and ship `index.js`/`dist` via `"files"`.
 
 ## 4. Install on a SignalK server
 
