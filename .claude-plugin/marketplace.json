@@ -15,6 +15,15 @@
       "keywords": ["signalk", "marine", "npm", "publishing", "plugin"]
     },
     {
+      "name": "signalk-registry",
+      "source": "./signalk-registry",
+      "description": "Preview your expected SignalK registry score before publishing — screenshots, changelog, and audit gaps that cost points, with the score you'd likely receive.",
+      "author": { "name": "Bryan Clark" },
+      "repository": "https://github.com/sailingnaturali/claude-skills",
+      "license": "MIT",
+      "keywords": ["signalk", "marine", "registry", "publishing", "score"]
+    },
+    {
       "name": "npm-oidc-publish",
       "source": "./npm-oidc-publish",
       "description": "Publish an npm package from GitHub Actions via OIDC trusted publishing — no NPM_TOKEN, no OTP in CI; the new-package first-publish flow and the registry-propagation 404 gotcha.",
