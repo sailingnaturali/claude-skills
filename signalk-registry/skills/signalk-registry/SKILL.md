@@ -1,6 +1,6 @@
 ---
 name: signalk-registry
-description: Preview your expected SignalK registry score before publishing. Run in the plugin repo — checks screenshots, changelog, and audit (the three locally-evaluable criteria) and shows what each gap costs.
+description: Use when publishing a SignalK plugin and you want to know your expected registry score. Checks screenshots, changelog, audit, and version-collision warning (the four locally-evaluable criteria) and shows what each gap costs.
 ---
 
 # SignalK Registry Score Preview
@@ -57,13 +57,16 @@ gh release list --limit 10
 Pass if `CHANGELOG.md` exists at the repo root, **or** if `gh release list` shows a release
 whose tag matches the current version (`v<version>` — e.g., `v0.1.0` for `"version": "0.1.0"`).
 
-**Fix:** Run `gh release create v<version> --generate-notes` after publishing, or add a
-`CHANGELOG.md` at the repo root.
+**Fix:** Add a `CHANGELOG.md` at the repo root — this is the reliable fix. GitHub Releases
+may also satisfy the registry depending on its harness version, but `CHANGELOG.md` is
+guaranteed.
 
 ## Check 3 — Security audit
 
+Run `npm install` first if `node_modules` is absent, then:
+
 ```bash
-npm audit --json 2>/dev/null || npm audit
+npm audit 2>/dev/null || true
 ```
 
 Score impact:
