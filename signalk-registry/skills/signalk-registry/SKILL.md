@@ -63,13 +63,20 @@ guaranteed.
 
 ## Check 3 — Security audit
 
-Run `npm install` first if `node_modules` is absent, then:
+Audit the **runtime** dependency tree only. The registry scores the *installed*
+plugin, which carries production deps — a `--save-dev` toolchain advisory (e.g. an
+`esbuild`/`vitest` CVE) does not ship to users and must not skew the score. A
+zero-dep plugin may have no lockfile, which makes `npm audit` fail with `ENOLOCK`
+rather than report clean; create one first so the audit can run.
 
 ```bash
-npm audit 2>/dev/null || true
+[ -f package-lock.json ] || npm i --package-lock-only >/dev/null 2>&1
+npm audit --omit=dev 2>/dev/null || true
 ```
 
-Score impact:
+`found 0 vulnerabilities` (including the zero-dep case) means clean → full 20 points.
+
+Score impact (runtime deps only):
 
 | Result | Security points | Score penalty |
 |--------|----------------|---------------|
