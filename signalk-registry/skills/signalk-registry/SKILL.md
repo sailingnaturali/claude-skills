@@ -166,9 +166,34 @@ npm view "$PKG@$VER" version 2>/dev/null
 If it prints, that version is already published — `publish.yml` will fail on the release. Bump
 `package.json` before cutting a release.
 
+## Check 6 — Repo metadata (presentation, not scored)
+
+The registry doesn't score these, but every `@sailingnaturali` plugin repo carries them so the
+plugin is discoverable on GitHub and links back to its npm package. They live on the GitHub repo
+(not `package.json`), so the registry/score checks above never catch a gap — verify explicitly.
+
+```bash
+REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)   # or pass owner/name
+PKG=$(node -p "require('./package.json').name")
+gh api "repos/$REPO" --jq '{description:(.description//"❌ MISSING"), homepage:(.homepage//"❌ MISSING"), topics:.topics}'
+```
+
+Pass criteria (mirror `signalk-equipment-registry`):
+- **description** — non-empty, a one-line "what it does".
+- **homepage** — the npm package URL: `https://www.npmjs.com/package/<PKG>`.
+- **topics** — include at least `signalk`, `signalk-plugin`, `marine`, plus plugin-specific tags.
+
+**Fix:**
+```bash
+gh api --method PATCH "repos/$REPO" -f homepage="https://www.npmjs.com/package/$PKG"
+# topics need a JSON array (the -f "names[]=..." form 422s):
+jq -n '{names:["signalk","signalk-plugin","marine"]}' | gh api --method PUT "repos/$REPO/topics" --input -
+```
+
 ## Output
 
-Present a card: the **published** score first (ground truth), then the locally-fixable gaps.
+Present a card: the **published** score first (ground truth), then the locally-fixable gaps,
+then repo presentation (separate — not part of the score).
 
 ```
 Published: 90/100  (sailingnaturali__signalk-currents, v0.5.1)
@@ -182,6 +207,11 @@ Local gaps (apply before the next nightly):
 
 Projected after fixes: 100/100
   ⚠ v0.5.1 already on npm — bump before cutting a release
+
+Repo presentation (not scored):
+  ✓ description    ok
+  ✗ homepage       set to https://www.npmjs.com/package/@sailingnaturali/signalk-currents
+  ✓ topics         ok    signalk, signalk-plugin, marine, …
 ```
 
 Projected score = base harness (assume passing unless Check 0 says otherwise) − open penalties.
