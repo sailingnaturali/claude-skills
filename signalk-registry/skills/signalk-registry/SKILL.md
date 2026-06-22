@@ -207,6 +207,38 @@ Pass: a short, human name ("Currents", "Depth Offsets", "Journey Replay") — no
 "signalk": { "displayName": "<Friendly Name>", "screenshots": ["./docs/screenshots/config.png"] }
 ```
 
+## Check 8 — Companion plugins (presentation, not scored)
+
+The App Store renders `signalk.requires` as a **"Required plugins"** section (with a one-click
+*Install required plugins* button) and `signalk.recommends` as the **"Works well with"** click-through
+cards. Neither affects the score, and neither is an npm dependency — they're App-Store-only
+composition hints. A plugin that names a companion only in its README prose but omits it here gets
+no card, so the relationship is invisible in the App Store (this bit `signalk-dsc` — the README
+named the Logbook plugin but `recommends` was unset).
+
+```bash
+node -p "JSON.stringify(require('./package.json').signalk?.requires || [])"     # mandatory companions
+node -p "JSON.stringify(require('./package.json').signalk?.recommends || [])"   # suggested companions
+# Cross-check: companion SignalK plugins the README names (declared or not)
+grep -ioE '@[a-z0-9-]+/signalk-[a-z0-9-]+|signalk-[a-z0-9-]+' README.md | sort -u
+```
+
+Pass criteria:
+- Every SignalK plugin the README presents as a companion ("works with", "pairs with", "designed
+  to work with", "logs to …") is declared in `requires` (hard dependency — the plugin doesn't
+  function without it) or `recommends` (optional pairing). The README ↔ metadata must agree; a
+  companion in prose only is a gap.
+- Entries are **published npm package names exactly as the App Store lists them** — verify each
+  resolves (`npm view <name> version`). The Logbook plugin, e.g., is the scoped
+  `@meri-imperiumi/signalk-logbook`, not the unpublished bare `signalk-logbook`. A wrong or
+  unpublished name still renders, but as an inert "Not installed" link.
+
+**Fix:** add to the `signalk` object (same one as `displayName`/`screenshots`); takes effect on the
+next release.
+```json
+"signalk": { "recommends": ["@meri-imperiumi/signalk-logbook"] }
+```
+
 ## Output
 
 Present a card: the **published** score first (ground truth), then the locally-fixable gaps,
@@ -230,6 +262,7 @@ Repo presentation (not scored):
   ✗ homepage       set to https://www.npmjs.com/package/@sailingnaturali/signalk-currents
   ✓ topics         ok    signalk, signalk-plugin, marine, …
   ✓ displayName    ok    "Currents"
+  ✓ companions     ok    recommends: @meri-imperiumi/signalk-logbook (README ↔ metadata agree)
 ```
 
 Projected score = base harness (assume passing unless Check 0 says otherwise) − open penalties.
