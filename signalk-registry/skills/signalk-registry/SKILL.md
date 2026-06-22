@@ -190,6 +190,23 @@ gh api --method PATCH "repos/$REPO" -f homepage="https://www.npmjs.com/package/$
 jq -n '{names:["signalk","signalk-plugin","marine"]}' | gh api --method PUT "repos/$REPO/topics" --input -
 ```
 
+## Check 7 — Display name (presentation, not scored)
+
+The registry doesn't score this, but without `signalk.displayName` both the registry listing and
+the in-server App Store fall back to the raw npm `name` — so a scoped package shows the ugly
+`@sailingnaturali/signalk-<name>` instead of a human label (this bit `signalk-journey-replay`).
+
+```bash
+node -p "require('./package.json').signalk?.displayName || '❌ MISSING'"
+```
+
+Pass: a short, human name ("Currents", "Depth Offsets", "Journey Replay") — not the npm name.
+
+**Fix:** add it to the `signalk` object (same one as `screenshots`); takes effect on the next release.
+```json
+"signalk": { "displayName": "<Friendly Name>", "screenshots": ["./docs/screenshots/config.png"] }
+```
+
 ## Output
 
 Present a card: the **published** score first (ground truth), then the locally-fixable gaps,
@@ -212,6 +229,7 @@ Repo presentation (not scored):
   ✓ description    ok
   ✗ homepage       set to https://www.npmjs.com/package/@sailingnaturali/signalk-currents
   ✓ topics         ok    signalk, signalk-plugin, marine, …
+  ✓ displayName    ok    "Currents"
 ```
 
 Projected score = base harness (assume passing unless Check 0 says otherwise) − open penalties.
