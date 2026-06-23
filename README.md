@@ -8,7 +8,7 @@ marine-AI stack.
 
 ```
 /plugin marketplace add sailingnaturali/claude-skills
-/plugin install signalk-plugin@sailingnaturali     # or signalk-registry@…, npm-oidc-publish@…, debug-mcp-agent@…
+/plugin install signalk-plugin@sailingnaturali     # or signalk-registry@…, npm-oidc-publish@…, debug-mcp-agent@…, record-web-gif@…
 ```
 
 ## Plugins
@@ -35,6 +35,13 @@ registry-propagation 404 gotcha.
 Debugging an MCP / tool-backed AI agent by **probing ground truth before trusting its
 self-report**: 404-vs-error, which-model-is-driving, server-down vs missing-data,
 auth-vs-absence.
+
+### `record-web-gif`
+Recording a running web app — a local dev server or a live URL — to a clean GIF for a README,
+PR, or demo. Drives **system Chrome via `puppeteer-core`** (no chromium download), captures
+frames over CDP, and assembles with **ffmpeg** (2-pass palette). Handles the headless
+**WebGL/canvas blank-frame** gotcha (MapLibre, three.js, charts) and the headful-for-smoothness
+tradeoff.
 
 ## License
 

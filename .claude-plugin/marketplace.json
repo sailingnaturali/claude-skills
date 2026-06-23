@@ -40,6 +40,15 @@
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
       "keywords": ["mcp", "agent", "debugging", "ai", "tools"]
+    },
+    {
+      "name": "record-web-gif",
+      "source": "./record-web-gif",
+      "description": "Record a running web app (dev server or live URL) to a clean GIF for a README/PR/demo — puppeteer-core + system Chrome + ffmpeg, with the headless WebGL/canvas blank-frame gotcha handled.",
+      "author": { "name": "Bryan Clark" },
+      "repository": "https://github.com/sailingnaturali/claude-skills",
+      "license": "MIT",
+      "keywords": ["gif", "recording", "puppeteer", "ffmpeg", "demo", "readme", "webgl"]
     }
   ]
 }

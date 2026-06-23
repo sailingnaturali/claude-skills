@@ -1,0 +1,8 @@
+{
+  "name": "record-web-gif",
+  "description": "Record a running web app (dev server or live URL) to a clean GIF via puppeteer-core + system Chrome + ffmpeg; handles the headless WebGL/canvas blank-frame gotcha.",
+  "version": "0.1.0",
+  "author": { "name": "Bryan Clark" },
+  "license": "MIT",
+  "keywords": ["gif", "recording", "screenshot", "puppeteer", "ffmpeg", "demo", "readme"]
+}
