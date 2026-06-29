@@ -267,3 +267,36 @@ Repo presentation (not scored):
 
 Projected score = base harness (assume passing unless Check 0 says otherwise) − open penalties.
 ```
+
+## Maintenance — verify the rubric mirror against upstream
+
+The "Scoring rubric" table above hand-mirrors the registry's scorer, so it can silently drift
+when upstream changes the rubric. **Don't clone/run the harness to check** — the registry runs it
+under `firejail --net=none`, so a local run diverges (a plugin that hits the network in `start()`
+gets a false pass without the sandbox). Just diff the two source files via the API and reconcile
+the table:
+
+- `test-harness/score.ts` — the 0–100 base rubric (`computeScore`).
+- `scripts/build-api.ts` — applies the `−10` `no-plugin-ci` penalty on top of the base.
+
+```bash
+REPO=SignalK/signalk-plugin-registry
+# Last reconciled upstream SHAs (bump both when you re-sync the rubric table):
+SCORE_PIN=5017169f038f4e915d969fe3b9d4105368293362    # test-harness/score.ts
+BUILDAPI_PIN=3a62e1ebef42aeca04824e429ad3c2d434044e99 # scripts/build-api.ts
+
+for spec in "test-harness/score.ts:$SCORE_PIN" "scripts/build-api.ts:$BUILDAPI_PIN"; do
+  f=${spec%:*}; pin=${spec#*:}
+  up=$(gh api "repos/$REPO/commits?path=$f&per_page=1" --jq '.[0].sha')
+  if [ "$up" = "$pin" ]; then echo "✓ $f current ($up)"
+  else echo "✗ $f CHANGED — read diff: gh api repos/$REPO/compare/$pin...$up --jq '.files[].patch'"; fi
+done
+```
+
+If either changed: read the diff, update the rubric table / penalties above, then bump the pin.
+
+**Note (decided 2026-06-29, not adopted):** `test-harness/detect-sandboxed.ts` is the only harness
+piece that scores a *working tree* (load/activate/schema) rather than a published `name@version`.
+We chose **not** to wire it in — it needs the registry's `ts-node`/`esm-resolve` toolchain and runs
+*without* firejail locally (the false-pass issue above), so it can't be invoked in a way that
+matches the nightly. Revisit only if upstream ships it as a standalone, sandbox-aware CLI.
