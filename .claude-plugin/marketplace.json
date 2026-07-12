@@ -6,6 +6,15 @@
   },
   "plugins": [
     {
+      "name": "oss-branch-protection",
+      "source": "./oss-branch-protection",
+      "description": "Apply a consistent branch-protection template across all public repos in a GitHub org — admin-exempt (maintainer keeps direct-commit/force-push), CI-gated merges for contributors, force-push/deletion blocked. Idempotent applier that derives each repo's required CI check automatically.",
+      "author": { "name": "Bryan Clark" },
+      "repository": "https://github.com/sailingnaturali/claude-skills",
+      "license": "MIT",
+      "keywords": ["github", "branch-protection", "oss", "ci", "governance"]
+    },
+    {
       "name": "signalk-plugin",
       "source": "./signalk-plugin",
       "description": "Author and publish a SignalK server plugin — the @signalk/server-api patterns that work (resource provider vs router, deltas, position), the npm scaffold, and OIDC trusted publishing.",

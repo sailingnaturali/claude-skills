@@ -8,7 +8,7 @@ marine-AI stack.
 
 ```
 /plugin marketplace add sailingnaturali/claude-skills
-/plugin install signalk-plugin@sailingnaturali     # or signalk-registry@…, npm-oidc-publish@…, debug-mcp-agent@…, record-web-gif@…
+/plugin install signalk-plugin@sailingnaturali     # or signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
 ```
 
 ## Plugins
@@ -30,6 +30,13 @@ Publishing **any** npm package from GitHub Actions via **OIDC trusted publishing
 `NPM_TOKEN`, no OTP in CI. The release-triggered workflow, the new-package first-publish
 chicken-and-egg (CLI+OTP once, then configure the trusted publisher), and the
 registry-propagation 404 gotcha.
+
+### `oss-branch-protection`
+Applying one **branch-protection template** across every public repo in a GitHub org — one
+idempotent script. **Admin-exempt** so a solo maintainer keeps direct-commit / force-push,
+while contributors get CI-gated merges, blocked force-push/deletion, and required conversation
+resolution. Derives each repo's required CI check from real check-runs (preferring a stable
+aggregate gate) so a wrong context name can't silently wedge PRs.
 
 ### `debug-mcp-agent`
 Debugging an MCP / tool-backed AI agent by **probing ground truth before trusting its

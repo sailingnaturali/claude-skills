@@ -1,0 +1,8 @@
+{
+  "name": "oss-branch-protection",
+  "description": "Apply a consistent branch-protection template across all public repos in a GitHub org — admin-exempt, CI-gated, force-push/deletion blocked.",
+  "version": "0.1.0",
+  "author": { "name": "Bryan Clark" },
+  "license": "MIT",
+  "keywords": ["github", "branch-protection", "oss", "ci", "governance"]
+}
