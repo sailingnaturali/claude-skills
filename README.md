@@ -43,6 +43,15 @@ frames over CDP, and assembles with **ffmpeg** (2-pass palette). Handles the hea
 **WebGL/canvas blank-frame** gotcha (MapLibre, three.js, charts) and the headful-for-smoothness
 tradeoff.
 
+## Skill format policy
+
+Skills in this marketplace follow the cross-vendor
+[Agent Skills](https://code.claude.com/docs/en/skills) `SKILL.md` standard: frontmatter is
+**`name` and `description` only** — no vendor-specific fields in skill bodies, no
+runtime-specific tool ids in prose (write "dispatch a subagent", not a tool name). The
+`.claude-plugin/` marketplace/plugin wrappers are Claude Code packaging, not the source of
+truth; the same `SKILL.md` files load in Codex, Copilot CLI, and Gemini CLI unchanged.
+
 ## License
 
 MIT
