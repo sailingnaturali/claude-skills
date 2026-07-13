@@ -166,11 +166,14 @@ npm view "$PKG@$VER" version 2>/dev/null
 If it prints, that version is already published — `publish.yml` will fail on the release. Bump
 `package.json` before cutting a release.
 
-## Check 6 — Repo metadata (presentation, not scored)
+## Check 6 — Repo metadata (not scored — fix on the spot, don't just report)
 
 The registry doesn't score these, but every `@sailingnaturali` plugin repo carries them so the
 plugin is discoverable on GitHub and links back to its npm package. They live on the GitHub repo
 (not `package.json`), so the registry/score checks above never catch a gap — verify explicitly.
+**Because this doesn't move the score, a reported miss gets shrugged off and shipped (it did —
+`signalk-ais-distress` + `signalk-distress-core` released with no homepage). Any miss here: run
+the Fix commands immediately as part of this check, then note it as fixed in the report.**
 
 ```bash
 REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)   # or pass owner/name
