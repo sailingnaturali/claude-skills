@@ -8,7 +8,7 @@ marine-AI stack.
 
 ```
 /plugin marketplace add sailingnaturali/claude-skills
-/plugin install signalk-plugin@sailingnaturali     # or signalk-container-helper@…, signalk-e2e@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
+/plugin install signalk-plugin@sailingnaturali     # or signalk-container-helper@…, signalk-e2e@…, pre-pr-review@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
 ```
 
 ## Plugins
@@ -70,6 +70,16 @@ one core rule: gate the change on a green Playwright run and attach it as PR evi
 - **`signalk-server-e2e`** — the SignalK-specific harness layered on top: spin up a local server
   on a scratch config, feed live data over the WebSocket delta stream, and the verified
   Freeboard-SK chart recipe. Defers the shared browser mechanics to `webapp-e2e`.
+
+### `pre-pr-review`
+Two independent review passes **before opening a PR**, gating `gh pr create` on both being clean:
+first self-audit the change like an **adversarial auditor** — assume it's wrong, hunt the classes
+static review misses (teardown/lifecycle races, stale or divergent state, every-raise-needs-a-clear,
+boundary inputs), and verify a finding reproduces before fixing it — then run a **CodeRabbit CLI**
+review. Covers the `cr` mechanics that bite: it reviews **committed** changes only, it's
+**rate-limited** so always save the output to a file (`--agent` for structured findings; no
+`--plain` flag — plain is the default), and `cr review findings` re-reads the last run without
+spending a new one.
 
 ## Skill format policy
 
