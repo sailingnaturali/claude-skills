@@ -58,6 +58,24 @@
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
       "keywords": ["gif", "recording", "puppeteer", "ffmpeg", "demo", "readme", "webgl"]
+    },
+    {
+      "name": "signalk-server-e2e",
+      "source": "./signalk-server-e2e",
+      "description": "Browser-level end-to-end test a SignalK server or plugin change before opening a PR — spin up a local server on a scratch config, drive the Admin UI / plugin config panel / Freeboard-SK with Playwright, feed live data over the WebSocket delta stream, handle the headless-Chrome blank-canvas gotcha, and attach the passing run as PR evidence.",
+      "author": { "name": "Dirk Wahrheit" },
+      "repository": "https://github.com/sailingnaturali/claude-skills",
+      "license": "MIT",
+      "keywords": ["signalk", "marine", "e2e", "playwright", "testing", "browser"]
+    },
+    {
+      "name": "webapp-e2e",
+      "source": "./webapp-e2e",
+      "description": "Browser-level end-to-end test a web app change — a dev server, a live URL, or an isolated component like a plugin config panel — before opening a PR. Playwright with the repo's bundled chromium (not a system/MCP browser), the headless blank-canvas gotcha, mounting an isolated Module-Federation component, and attaching the passing run as PR evidence.",
+      "author": { "name": "Dirk Wahrheit" },
+      "repository": "https://github.com/sailingnaturali/claude-skills",
+      "license": "MIT",
+      "keywords": ["e2e", "playwright", "testing", "browser", "webapp", "ci"]
     }
   ]
 }
