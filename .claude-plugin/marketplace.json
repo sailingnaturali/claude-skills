@@ -24,6 +24,15 @@
       "keywords": ["signalk", "marine", "npm", "publishing", "plugin"]
     },
     {
+      "name": "signalk-container-helper",
+      "source": "./signalk-container-helper",
+      "description": "Build a SignalK plugin that runs a Docker/Podman container via the signalk-container manager — the signalk-container-helper library that packages the lifecycle (wait for manager, validate tag, self-heal, ensureRunning, HTTP readiness, update routes, clean stop) and the shared React config-panel components, with the ESM-remote and never-throw-out-of-start gotchas.",
+      "author": { "name": "Dirk Wahrheit" },
+      "repository": "https://github.com/sailingnaturali/claude-skills",
+      "license": "MIT",
+      "keywords": ["signalk", "marine", "container", "docker", "podman", "plugin"]
+    },
+    {
       "name": "signalk-registry",
       "source": "./signalk-registry",
       "description": "Preview your expected SignalK registry score before publishing — screenshots, changelog, and audit gaps that cost points, with the score you'd likely receive.",
