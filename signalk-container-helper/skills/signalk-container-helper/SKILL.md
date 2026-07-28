@@ -15,6 +15,11 @@ and `signalk-updater` — into one typed, zero-dependency API. It sits on top of
 the actual podman/docker work). Use this skill when a plugin needs to run a container; don't
 re-implement the lifecycle by hand.
 
+> **Verified against `signalk-container-helper` v0.2.1 (July 2026).** The API surface (class
+> names, `start()` steps) and especially the version-floor table in §7 are version-sensitive and
+> will churn while the library is at 0.2.x — re-check them against the installed version before
+> relying on a specific number rather than debugging a mismatch.
+
 ## 0. Wiring & constraints (get these right first)
 
 - **ESM only, Node ≥ 24.** The library ships as an ES module (`import`, not `require`); your
@@ -176,7 +181,7 @@ package's `type`. Verify:
   poll period; start the next request only after the previous settled, and drop stale responses.
 - **Parse status bodies on non-2xx.** A 503 often carries the very fields the operator needs.
 
-## 7. Errors & version compatibility
+## 7. Errors & version compatibility (verified against signalk-container-helper v0.2.1, July 2026)
 
 Everything the helpers throw is a typed `ContainerHelperError` with a `code`
 (`manager-unavailable`, `no-runtime`, `invalid-tag`, `address-unresolved`, `not-ready`,
