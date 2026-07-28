@@ -58,6 +58,15 @@
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
       "keywords": ["gif", "recording", "puppeteer", "ffmpeg", "demo", "readme", "webgl"]
+    },
+    {
+      "name": "signalk-e2e",
+      "source": "./signalk-e2e",
+      "description": "Browser-level end-to-end testing before you open the PR — two co-installed skills: webapp-e2e drives any web app (dev server, live URL, isolated Module-Federation component) with the repo's bundled Playwright chromium; signalk-server-e2e adds the SignalK-specific harness (scratch-config server spin-up, WebSocket delta feed, the Freeboard-SK chart recipe). Both handle the headless blank-canvas gotcha and gate the change on a green run attached as PR evidence.",
+      "author": { "name": "Dirk Wahrheit" },
+      "repository": "https://github.com/sailingnaturali/claude-skills",
+      "license": "MIT",
+      "keywords": ["signalk", "marine", "e2e", "playwright", "testing", "browser", "webapp"]
     }
   ]
 }

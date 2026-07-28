@@ -1,0 +1,8 @@
+{
+  "name": "signalk-e2e",
+  "description": "Browser-level end-to-end testing before you open the PR: webapp-e2e for any web app, signalk-server-e2e for a SignalK server/plugin (spin-up, WS deltas, Freeboard) — both gate the change on a green Playwright run and attach it as PR evidence.",
+  "version": "0.1.0",
+  "author": { "name": "Dirk Wahrheit" },
+  "license": "MIT",
+  "keywords": ["signalk", "marine", "e2e", "playwright", "testing", "browser", "webapp"]
+}

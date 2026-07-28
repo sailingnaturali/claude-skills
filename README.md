@@ -8,7 +8,7 @@ marine-AI stack.
 
 ```
 /plugin marketplace add sailingnaturali/claude-skills
-/plugin install signalk-plugin@sailingnaturali     # or signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
+/plugin install signalk-plugin@sailingnaturali     # or signalk-e2e@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
 ```
 
 ## Plugins
@@ -49,6 +49,18 @@ PR, or demo. Drives **system Chrome via `puppeteer-core`** (no chromium download
 frames over CDP, and assembles with **ffmpeg** (2-pass palette). Handles the headless
 **WebGL/canvas blank-frame** gotcha (MapLibre, three.js, charts) and the headful-for-smoothness
 tradeoff.
+
+### `signalk-e2e`
+Browser-level end-to-end testing **before opening the PR** — two co-installed skills that share
+one core rule: gate the change on a green Playwright run and attach it as PR evidence.
+- **`webapp-e2e`** — the general case. Any web app change: a dev server, a live URL, or an
+  isolated component like a plugin config panel. Playwright with the repo's bundled chromium (not
+  a system/MCP browser), role/label locators + auto-waiting assertions, mounting a
+  Module-Federation remote for test, and the headless blank-canvas gotcha. (Distinct from
+  `record-web-gif`, which *records* a demo rather than *verifies*.)
+- **`signalk-server-e2e`** — the SignalK-specific harness layered on top: spin up a local server
+  on a scratch config, feed live data over the WebSocket delta stream, and the verified
+  Freeboard-SK chart recipe. Defers the shared browser mechanics to `webapp-e2e`.
 
 ## Skill format policy
 
