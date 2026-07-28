@@ -28,9 +28,12 @@ which kills most flakiness.
 
 ## 1. Point it at the app
 
-- **A dev server**: start it (`npm run dev`), then **poll for readiness** — a `fetch(url)`
-  returning 200, or `page.goto(url, { waitUntil: "networkidle" })` — before asserting. "Process
-  started" ≠ "app serving"; racing the first `goto` is the top source of flaky first runs.
+- **A dev server**: start it (`npm run dev`), then **poll for readiness with a `fetch(url)` that
+  returns 200** before asserting — that's the primary gate. "Process started" ≠ "app serving";
+  racing the first `goto` is the top source of flaky first runs. `page.goto(url, { waitUntil:
+  "networkidle" })` is a *fallback* for the page load — don't rely on it for readiness of an app
+  that holds a socket open (a live SignalK UI, any SSE/WebSocket stream): idle never fires and the
+  goto hangs.
 - **A live URL**: `page.goto(url)` directly. Keep destructive interactions out of production.
 - **An isolated component** (a plugin config panel, a design-system widget) that has no page of
   its own: mount it in a tiny host page and load that. See §3.
@@ -115,7 +118,8 @@ commit it as a spec so CI re-runs it on every PR.
 ## Gotchas recap
 
 - Repo's bundled `@playwright/test` chromium, not the MCP/system browser.
-- Poll for readiness before the first `goto`; `networkidle` for SPAs.
+- `fetch`-poll for readiness before the first `goto`; `networkidle` is a fallback, and never fires
+  for an app that holds a socket open.
 - Role/label/text locators + auto-waiting `expect`; avoid bare `waitForTimeout`.
 - Assert DOM **and** the network call the feature should make.
 - Blank canvas ⇒ headless-WebGL; retry headful under `xvfb`.

@@ -8,7 +8,7 @@ marine-AI stack.
 
 ```
 /plugin marketplace add sailingnaturali/claude-skills
-/plugin install signalk-plugin@sailingnaturali     # or signalk-server-e2e@…, webapp-e2e@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
+/plugin install signalk-plugin@sailingnaturali     # or signalk-e2e@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
 ```
 
 ## Plugins
@@ -50,20 +50,17 @@ frames over CDP, and assembles with **ffmpeg** (2-pass palette). Handles the hea
 **WebGL/canvas blank-frame** gotcha (MapLibre, three.js, charts) and the headful-for-smoothness
 tradeoff.
 
-### `signalk-server-e2e`
-Browser-level end-to-end testing a SignalK server or plugin change **before opening the PR** —
-spin up a local server on a scratch config, drive its Admin UI, a plugin config panel, or
-Freeboard-SK with Playwright, feed live data over the WebSocket delta stream, and attach the
-passing run as PR evidence. Covers the WS-delta feed for position/values, the headless-Chrome
-blank-canvas gotcha, driving Module-Federation config panels, and using the repo's bundled
-chromium rather than a system/MCP browser.
-
-### `webapp-e2e`
-Browser-level end-to-end testing **any** web app change **before opening the PR** — a dev server,
-a live URL, or an isolated component like a plugin config panel. Playwright with the repo's
-bundled chromium, role/label locators + auto-waiting assertions, mounting a Module-Federation
-remote for test, the headless blank-canvas gotcha, and attaching a screenshot/trace as PR
-evidence. (Distinct from `record-web-gif`, which *records* a demo rather than *verifies*.)
+### `signalk-e2e`
+Browser-level end-to-end testing **before opening the PR** — two co-installed skills that share
+one core rule: gate the change on a green Playwright run and attach it as PR evidence.
+- **`webapp-e2e`** — the general case. Any web app change: a dev server, a live URL, or an
+  isolated component like a plugin config panel. Playwright with the repo's bundled chromium (not
+  a system/MCP browser), role/label locators + auto-waiting assertions, mounting a
+  Module-Federation remote for test, and the headless blank-canvas gotcha. (Distinct from
+  `record-web-gif`, which *records* a demo rather than *verifies*.)
+- **`signalk-server-e2e`** — the SignalK-specific harness layered on top: spin up a local server
+  on a scratch config, feed live data over the WebSocket delta stream, and the verified
+  Freeboard-SK chart recipe. Defers the shared browser mechanics to `webapp-e2e`.
 
 ## Skill format policy
 
