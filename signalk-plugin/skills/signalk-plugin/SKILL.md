@@ -34,12 +34,15 @@ For a scoped package add `"publishConfig": { "access": "public" }`. For TypeScri
 
 Prefer `"type": "module"` over CJS for anything new. The server has loaded ESM plugins since
 **v2.14.0** (June 2025): it `require()`s the plugin directory first — Node ≥ 20.19 / ≥ 22.12
-loads ESM through `require` by default — and falls back to dynamic `import()` resolved via `esm-resolve`
-(plain `import()` can't take a directory path). Both paths unwrap `mod.default ?? mod`, so the
-entry point must **`export default function (app) { ... }`** returning the plugin object. The
-practical reason to switch: new majors of common dependencies ship ESM-only, and a CJS plugin
-can only reach those through awkward dynamic `import()` — an ESM plugin just imports them. For
-TypeScript, `"module": "nodenext"` with a default export compiles to the same shape.
+loads ESM through `require` by default — and falls back to dynamic `import()` resolved via
+`esm-resolve` (plain `import()` can't take a directory path), so ESM plugins load even on Nodes
+where `require(esm)` isn't available. (Server 2.30.0 itself requires Node ≥ 22; v2.14.0
+required ≥ 20.) Both paths unwrap `mod.default ?? mod`, so the entry point must
+**`export default function (app) { ... }`** returning the plugin object. The practical reason
+to switch: new majors of common dependencies ship ESM-only, and a CJS plugin can only reach
+those through awkward dynamic `import()` — an ESM plugin just imports them. For TypeScript,
+`"module": "nodenext"` with a default export compiles to the same shape — remember nodenext
+makes relative imports require explicit `.js` extensions (`./helpers.js`, even in `.ts` files).
 
 ## 3. The @signalk/server-api patterns that actually work
 
@@ -69,10 +72,12 @@ type Config = Static<typeof ConfigSchema> // the type of start(config)
 // in the plugin object:  schema: () => ConfigSchema
 ```
 
-The admin UI renders `title`/`description`/`default` as-is. Two gotchas: every property not
-wrapped in `Type.Optional(...)` lands in the schema's `required` list, so wrap truly optional
-fields; and the package is the **scoped `@sinclair/typebox`** (0.34.x — what server-api uses).
-The *unscoped* `typebox` on npm is the separate 1.x line with a different API — don't mix them.
+Declare `@sinclair/typebox` in the plugin's **own `dependencies`** — don't rely on the server's
+copy being hoisted into reach. The admin UI renders `title`/`description`/`default` as-is. Two
+gotchas: every property not wrapped in `Type.Optional(...)` lands in the schema's `required`
+list, so wrap truly optional fields; and the package is the **scoped `@sinclair/typebox`**
+(0.34.x — what server-api uses). The *unscoped* `typebox` on npm is the separate 1.x line with
+a different API — don't mix them.
 
 ## 4. Plugin webapp state: a store, not `useState`
 
