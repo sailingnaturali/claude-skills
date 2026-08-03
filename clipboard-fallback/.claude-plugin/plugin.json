@@ -1,0 +1,8 @@
+{
+  "name": "clipboard-fallback",
+  "description": "Copy-to-clipboard that survives plain-HTTP origins: navigator.clipboard is secure-context-only, so LAN-served UIs need the execCommand('copy') fallback.",
+  "version": "0.1.0",
+  "author": { "name": "Dirk Wahrheit" },
+  "license": "MIT",
+  "keywords": ["clipboard", "webapp", "http", "secure-context", "frontend"]
+}
