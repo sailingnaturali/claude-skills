@@ -76,6 +76,15 @@
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
       "keywords": ["signalk", "marine", "e2e", "playwright", "testing", "browser", "webapp"]
+    },
+    {
+      "name": "git-worktrees",
+      "source": "./git-worktrees",
+      "description": "Run parallel sessions on one repo with git worktrees — per-branch directories and per-branch installs over a shared object store, git-enforced branch exclusivity, remove/prune done right (rm -rf leaves stale registrations), and the tmpfs warning: never put a worktree or scratch checkout in /tmp.",
+      "author": { "name": "Dirk Wahrheit" },
+      "repository": "https://github.com/sailingnaturali/claude-skills",
+      "license": "MIT",
+      "keywords": ["git", "worktree", "workflow", "parallel", "agents"]
     }
   ]
 }

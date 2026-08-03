@@ -8,7 +8,7 @@ marine-AI stack.
 
 ```
 /plugin marketplace add sailingnaturali/claude-skills
-/plugin install signalk-plugin@sailingnaturali     # or signalk-container-helper@…, signalk-e2e@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
+/plugin install signalk-plugin@sailingnaturali     # or signalk-container-helper@…, signalk-e2e@…, git-worktrees@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
 ```
 
 ## Plugins
@@ -70,6 +70,16 @@ one core rule: gate the change on a green Playwright run and attach it as PR evi
 - **`signalk-server-e2e`** — the SignalK-specific harness layered on top: spin up a local server
   on a scratch config, feed live data over the WebSocket delta stream, and the verified
   Freeboard-SK chart recipe. Defers the shared browser mechanics to `webapp-e2e`.
+
+### `git-worktrees`
+Running **parallel sessions on one repo** — several agent/dev sessions, a background review or
+build that must not be disturbed, a quick PR checkout — with `git worktree`: one directory per
+branch (own `node_modules`, own build output) over a shared object store, and git itself
+refuses to check the same branch out twice, turning session collisions into loud errors. Carries
+the verified mechanics: nothing gitignored comes along (install per worktree — that's the
+point), `rm -rf` leaves a stale `prunable` registration (`git worktree remove`/`prune`), and
+worktrees never go in `/tmp` — it's tmpfs, so a `node_modules` there eats RAM and dies on
+reboot.
 
 ## Skill format policy
 
