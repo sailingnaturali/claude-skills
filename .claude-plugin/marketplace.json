@@ -78,13 +78,13 @@
       "keywords": ["signalk", "marine", "e2e", "playwright", "testing", "browser", "webapp"]
     },
     {
-      "name": "pre-pr-review",
-      "source": "./pre-pr-review",
-      "description": "Before opening a PR, catch defects cheaply: self-audit the change like an adversarial auditor (not the author), then run a CodeRabbit CLI review, and only open the PR once both are clean. Covers the auditor mindset, driving the cr CLI (structured output to a file, the rate-limit and committed-only gotchas), and gating PR creation.",
+      "name": "coderabbit-cli",
+      "source": "./coderabbit-cli",
+      "description": "Drive the CodeRabbit CLI (cr) as the review gate before opening a PR — commit-first --committed scoping, --base-commit pinning against a stale local base, rate-limit/tee discipline, cr review findings to re-read for free. Requires a CodeRabbit account; the diff is uploaded to CodeRabbit's cloud.",
       "author": { "name": "Dirk Wahrheit" },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
-      "keywords": ["code-review", "coderabbit", "audit", "pr", "quality", "ci"]
+      "keywords": ["code-review", "coderabbit", "pr", "quality", "ci"]
     }
   ]
 }

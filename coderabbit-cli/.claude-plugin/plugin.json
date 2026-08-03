@@ -1,0 +1,8 @@
+{
+  "name": "coderabbit-cli",
+  "description": "Drive the CodeRabbit CLI (cr) as a pre-PR review gate: commit-first scoping, base pinning, rate-limit discipline, and re-reading findings for free.",
+  "version": "0.1.0",
+  "author": { "name": "Dirk Wahrheit" },
+  "license": "MIT",
+  "keywords": ["code-review", "coderabbit", "pr", "quality"]
+}
