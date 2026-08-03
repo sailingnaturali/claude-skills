@@ -33,8 +33,8 @@ For a scoped package add `"publishConfig": { "access": "public" }`. For TypeScri
 ## 2. Write new plugins as ESM
 
 Prefer `"type": "module"` over CJS for anything new. The server has loaded ESM plugins since
-**v2.14.0** (June 2025): it `require()`s the plugin directory first — Node ≥ 20.19 / ≥ 22.x
-loads ESM through `require` — and falls back to dynamic `import()` resolved via `esm-resolve`
+**v2.14.0** (June 2025): it `require()`s the plugin directory first — Node ≥ 20.19 / ≥ 22.12
+loads ESM through `require` by default — and falls back to dynamic `import()` resolved via `esm-resolve`
 (plain `import()` can't take a directory path). Both paths unwrap `mod.default ?? mod`, so the
 entry point must **`export default function (app) { ... }`** returning the plugin object. The
 practical reason to switch: new majors of common dependencies ship ESM-only, and a CJS plugin
