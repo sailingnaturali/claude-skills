@@ -8,7 +8,7 @@ marine-AI stack.
 
 ```
 /plugin marketplace add sailingnaturali/claude-skills
-/plugin install signalk-plugin@sailingnaturali     # or signalk-container-helper@…, signalk-e2e@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
+/plugin install signalk-plugin@sailingnaturali     # or signalk-container-helper@…, signalk-e2e@…, clipboard-fallback@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
 ```
 
 ## Plugins
@@ -70,6 +70,16 @@ one core rule: gate the change on a green Playwright run and attach it as PR evi
 - **`signalk-server-e2e`** — the SignalK-specific harness layered on top: spin up a local server
   on a scratch config, feed live data over the WebSocket delta stream, and the verified
   Freeboard-SK chart recipe. Defers the shared browser mechanics to `webapp-e2e`.
+
+### `clipboard-fallback`
+Copy-to-clipboard that survives **plain-HTTP origins**. `navigator.clipboard` exists only in
+secure contexts — so it works on `localhost` in dev and is **`undefined`** on
+`http://<lan-ip>`, which is how boat servers and embedded UIs are actually reached (verified:
+same server, same browser, one origin secure, the other not). The recipe: gate on
+`window.isSecureContext && navigator.clipboard`, fall back to the offscreen-textarea
+`document.execCommand('copy')` path — deprecated, but the only copy that works without TLS,
+so don't let a linter delete it. Plus: test via the LAN IP (localhost proves nothing), and
+paste has no insecure-context fallback at all.
 
 ## Skill format policy
 

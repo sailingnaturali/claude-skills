@@ -76,6 +76,15 @@
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
       "keywords": ["signalk", "marine", "e2e", "playwright", "testing", "browser", "webapp"]
+    },
+    {
+      "name": "clipboard-fallback",
+      "source": "./clipboard-fallback",
+      "description": "Copy-to-clipboard that survives plain-HTTP origins — navigator.clipboard is secure-context-only (works on localhost, undefined on http://<lan-ip>), so LAN-served UIs need the isSecureContext gate plus the execCommand('copy') textarea fallback. Includes the localhost-testing trap and why paste has no fallback.",
+      "author": { "name": "Dirk Wahrheit" },
+      "repository": "https://github.com/sailingnaturali/claude-skills",
+      "license": "MIT",
+      "keywords": ["clipboard", "webapp", "http", "secure-context", "frontend"]
     }
   ]
 }
