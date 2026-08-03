@@ -76,6 +76,15 @@
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
       "keywords": ["signalk", "marine", "e2e", "playwright", "testing", "browser", "webapp"]
+    },
+    {
+      "name": "signalk-apis",
+      "source": "./signalk-apis",
+      "description": "Work with the Signal K server APIs as consumer or provider — v1 is the data-model API (tree REST, delta stream, PUT actuation), v2 is purpose-built domain APIs (course, resources, notifications, history, autopilot) backed by provider plugins: different jobs, not successive versions. Covers discovery, response envelopes, auth levels, provider registration, and the admin-gated plugin-route gotcha.",
+      "author": { "name": "Dirk Wahrheit" },
+      "repository": "https://github.com/sailingnaturali/claude-skills",
+      "license": "MIT",
+      "keywords": ["signalk", "marine", "api", "rest", "websocket", "provider"]
     }
   ]
 }

@@ -8,7 +8,7 @@ marine-AI stack.
 
 ```
 /plugin marketplace add sailingnaturali/claude-skills
-/plugin install signalk-plugin@sailingnaturali     # or signalk-container-helper@…, signalk-e2e@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
+/plugin install signalk-plugin@sailingnaturali     # or signalk-apis@…, signalk-container-helper@…, signalk-e2e@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
 ```
 
 ## Plugins
@@ -70,6 +70,17 @@ one core rule: gate the change on a green Playwright run and attach it as PR evi
 - **`signalk-server-e2e`** — the SignalK-specific harness layered on top: spin up a local server
   on a scratch config, feed live data over the WebSocket delta stream, and the verified
   Freeboard-SK chart recipe. Defers the shared browser mechanics to `webapp-e2e`.
+
+### `signalk-apis`
+Working with the [SignalK](https://signalk.org) server APIs as **consumer** (webapp, external
+app) or **provider** (server plugin) — starting from the misconception the docs never quite
+kill: **v2 is not the successor of v1**. v1 is the data-model API (full tree REST, WebSocket
+delta stream, PUT actuation); v2 is purpose-built domain APIs (course, resources,
+notifications, history, autopilot) that the server mounts and provider plugins implement.
+Carries the verified specifics: the discovery document advertises v1 only, a v2 404 can mean
+"no provider" rather than "no API" (the resources 404→200 flip), the history 501, the v1 PUT
+request envelope, `_default`/`_providers`/`_config` conventions, and why consumer data must
+never live behind admin-gated `/plugins/<id>/*` routes. Verified against signalk-server 2.30.0.
 
 ## Skill format policy
 
