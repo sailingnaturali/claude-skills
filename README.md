@@ -16,9 +16,16 @@ marine-AI stack.
 ### `signalk-plugin`
 Authoring and publishing a [SignalK](https://signalk.org) server plugin to npm — the
 `@signalk/server-api` patterns that actually work (serve data via a resource provider, not an
-admin-gated router; deltas; vessel position), the package scaffold, npm **OIDC trusted
-publishing** (including the new-package first-publish chicken-and-egg), and the Docker
-`node_modules` / `EBUSY` install gotcha.
+admin-gated router; deltas; vessel position), the **ESM** scaffold (supported since server
+2.14; default-export the plugin factory), defining the config schema once in **TypeBox**
+(`@signalk/server-api` ships it — one definition is both the admin-UI form and the TS type),
+webapp view state in a **Zustand** store so it survives navigation, the
+**no-install-scripts rule** (app-store installs pass `--ignore-scripts`, npm 12 gates
+dependency scripts, and a plugin can't whitelist itself — containerize heavy parts via the
+signalk-container manager instead), **where to store what** (server-owned config vs
+`getDataDirPath()` vs the applicationData API — and never inside `node_modules`, where
+updates erase it), npm **OIDC trusted publishing** (including the new-package first-publish
+chicken-and-egg), and the Docker `node_modules` / `EBUSY` install gotcha.
 
 ### `signalk-container-helper`
 Building a SignalK plugin that runs a Docker/Podman container through the
