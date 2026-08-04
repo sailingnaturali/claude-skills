@@ -1,0 +1,8 @@
+{
+  "name": "git-worktrees",
+  "description": "Run parallel sessions on one repo with git worktrees: per-branch directories and installs over a shared object store, loud branch-exclusivity, clean remove/prune — and never on tmpfs /tmp.",
+  "version": "0.1.0",
+  "author": { "name": "Dirk Wahrheit" },
+  "license": "MIT",
+  "keywords": ["git", "worktree", "workflow", "parallel", "agents"]
+}
