@@ -1,6 +1,6 @@
 ---
 name: signalk-plugin
-description: Use when authoring and publishing a SignalK server plugin to npm — the @signalk/server-api patterns that actually work (resource provider vs router, deltas, vessel position), the ESM package scaffold, TypeBox config schemas, webapp state that survives navigation, and npm OIDC trusted publishing (including the new-package first-publish chicken-and-egg).
+description: Use when authoring and publishing a SignalK server plugin to npm — the @signalk/server-api patterns that actually work (resource provider vs router, deltas, vessel position), the ESM package scaffold, TypeBox config schemas, webapp state that survives navigation, the no-install-scripts rule (app-store installs pass --ignore-scripts and npm 12 gates dependency scripts — containerize heavy parts instead), and npm OIDC trusted publishing (including the new-package first-publish chicken-and-egg).
 ---
 
 # Author & publish a SignalK plugin
@@ -107,6 +107,53 @@ in the server's data dir (`~/.signalk`), then restart. Config persists under
 and can't rename a mount point (`EBUSY`), which breaks *every* plugin install/update. Mount
 outside `node_modules` and link it with a `file:` dep, or just `npm install` it as a tracked
 dependency (anything extraneous gets pruned on the next reify).
+
+## 7. Install scripts never run — design for it
+
+- **The app store installs plugins with `npm --save --ignore-scripts install`** (read from the
+  released server's install path). Your plugin's `install`/`postinstall` — and those of every
+  dependency — are skipped on every app-store install. (`"prepare": "npm run build"` from the
+  scaffold is unaffected: it runs on *your* machine at publish, not on the user's at install.)
+- **npm 12 extends the same to manual installs**: `latest` since July 2026, it skips dependency
+  lifecycle scripts by default with only a `npm warn install-scripts` hint — and a plugin
+  *cannot whitelist itself*, because `allowScripts` is honored only in the install **root**'s
+  package.json, never in a dependency's own.
+- **The failure mode is silent.** The install "succeeds"; the missing build artifact surfaces
+  only at runtime ("Failed to load native canSocket module" — the `node-gyp rebuild`-in-postinstall
+  class of breakage that hit every server image when npm moved 11→12).
+- So: **no load-bearing install scripts anywhere in your dependency tree.** Prefer pure JS;
+  where native is unavoidable, use N-API prebuilds resolved at `require` time (the serialport
+  pattern — it kept working throughout). CI check that costs nothing: install your plugin with
+  `npm install --ignore-scripts` and run the tests against that tree.
+- **Need more than a script-free npm package can deliver** — a native toolchain, real compute,
+  an external service? Don't fight the constraint: ship that part as a **container** your
+  plugin manages through the [signalk-container](https://github.com/dirkwa/signalk-container)
+  manager (the [`signalk-container-helper`](https://github.com/hoeken/signalk-container-helper)
+  library packages the container lifecycle), and keep the npm plugin itself thin.
+
+## 8. Where to store what
+
+Four distinct places, and picking the wrong one is a delayed-loss bug:
+
+- **Never inside the plugin's install directory** (`__dirname`, anywhere under
+  `node_modules`). The app store reinstalls/reifies that tree on every update — files written
+  there silently vanish. This is the classic "worked for months, gone after an update" report.
+- **Plugin configuration → let the server own it.** What the user sets in the config form
+  arrives as `start(config)`; the server persists it at
+  `<configdir>/plugin-config-data/<pluginid>.json`. Update it programmatically via
+  `app.savePluginOptions(...)` — never write that file yourself.
+- **Plugin runtime data → `app.getDataDirPath()`**, which is the per-plugin directory
+  `<configdir>/plugin-config-data/<pluginid>/`. It survives plugin updates and travels with
+  the server's config dir (and its backups). This is where caches, downloaded files, and
+  databases belong — the bundled resources-provider keeps its waypoints/routes there.
+- **Webapp and per-user settings → the applicationData REST API**:
+  `/signalk/v1/applicationData/{user|global}/<appid>/<version>`, persisted by the server under
+  `<configdir>/applicationData/{users/<name>|global}/<appid>/<version>.json`. `user` scope is
+  per logged-in user; the `<version>` segment gives settings-per-app-version for free.
+  Gotcha: **with security disabled the whole interface answers 405 "security is not
+  enabled"** — a webapp using it must handle that response on open-security servers.
+- **Boat data isn't a file at all** — publish it into the data model (`handleMessage`) or
+  behind a provider registration, so every consumer sees it through the normal APIs.
 
 ## Testing
 

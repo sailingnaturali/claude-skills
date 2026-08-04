@@ -17,7 +17,7 @@
     {
       "name": "signalk-plugin",
       "source": "./signalk-plugin",
-      "description": "Author and publish a SignalK server plugin — the @signalk/server-api patterns that work (resource provider vs router, deltas, position), the ESM scaffold, TypeBox config schemas, and OIDC trusted publishing.",
+      "description": "Author and publish a SignalK server plugin — the @signalk/server-api patterns that work (resource provider vs router, deltas, position), the ESM scaffold, TypeBox config schemas, the no-install-scripts rule (app store uses --ignore-scripts; containerize heavy parts), storage locations (config vs data dir vs applicationData — never node_modules), and OIDC trusted publishing.",
       "author": { "name": "Bryan Clark" },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
