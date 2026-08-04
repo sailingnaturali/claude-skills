@@ -27,7 +27,9 @@ TS `src/` built with `tsc`), `package.json`, `LICENSE`, `README.md`, `.gitignore
 }
 ```
 For a scoped package add `"publishConfig": { "access": "public" }`. For TypeScript use
-`"files": ["dist"]` and `"prepare": "npm run build"` so `npm publish` builds first. The
+`"files": ["dist"]`, point `"main": "dist/index.js"` (and `"types": "dist/index.d.ts"`) at the
+build output — without `main` the server resolves a nonexistent root `index.js` — and add
+`"prepare": "npm run build"` so `npm publish` builds first. The
 `signalk-node-server-plugin` keyword is what surfaces it in the SignalK app store.
 
 ## 2. Write new plugins as ESM
@@ -37,8 +39,9 @@ Prefer `"type": "module"` over CJS for anything new. The server has loaded ESM p
 loads ESM through `require` by default — and falls back to dynamic `import()` resolved via
 `esm-resolve` (plain `import()` can't take a directory path), so ESM plugins load even on Nodes
 where `require(esm)` isn't available. (Server 2.30.0 itself requires Node ≥ 22; v2.14.0
-required ≥ 20.) Both paths unwrap `mod.default ?? mod`, so the entry point must
-**`export default function (app) { ... }`** returning the plugin object. The practical reason
+required ≥ 20.) The `require` path unwraps `mod.default ?? mod`; the `import()` fallback
+returns `module.default` *directly* — anything without one loads as `undefined` there. So the
+entry point must **`export default function (app) { ... }`** returning the plugin object. The practical reason
 to switch: new majors of common dependencies ship ESM-only, and a CJS plugin can only reach
 those through awkward dynamic `import()` — an ESM plugin just imports them. For TypeScript,
 `"module": "nodenext"` with a default export compiles to the same shape — remember nodenext
