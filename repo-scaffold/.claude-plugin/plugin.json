@@ -1,0 +1,8 @@
+{
+  "name": "repo-scaffold",
+  "description": "Repo scaffolding that pays rent: AGENTS.md via @-import, .gitattributes eol=lf, prettier+eslint CI gate, weekly Trivy scan, tag-triggered OIDC/GHCR publishing, generated release notes.",
+  "version": "0.1.0",
+  "author": { "name": "Dirk Wahrheit" },
+  "license": "MIT",
+  "keywords": ["scaffolding", "ci", "github-actions", "release", "lint", "trivy"]
+}
