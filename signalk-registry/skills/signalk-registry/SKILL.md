@@ -1,6 +1,6 @@
 ---
 name: signalk-registry
-description: Use when publishing or maintaining a SignalK plugin and you want to know its registry score. Fetches the actual published score from the registry, then previews the criteria you can fix locally (screenshots, changelog, audit, plugin-CI) and shows what each gap costs.
+description: Use when publishing or maintaining a SignalK plugin and you want to know its registry score. Fetches the actual published score from the registry, previews the criteria you can fix locally (screenshots, changelog, audit, plugin-CI) with what each gap costs, and triggers an on-demand re-score via the registry's rescore issue template instead of waiting for the nightly run.
 ---
 
 # SignalK Registry Score
@@ -60,8 +60,16 @@ PY
 ```
 
 Notes:
-- The published version may lag your latest npm release until the next nightly re-test — a fresh
-  release won't show until the harness runs.
+- The published version may lag your latest npm release until the next nightly re-test — but
+  you don't have to wait. **Trigger an on-demand re-score**: open an issue on
+  [SignalK/signalk-plugin-registry](https://github.com/SignalK/signalk-plugin-registry/issues/new?template=rescore.yml)
+  with the *"Request a plugin re-score"* template — title `[rescore] <npm-name>`, one required
+  field (the npm package name, scoped names fine), one confirmation checkbox. The bot validates
+  the package, runs the scan, comments the new score + badges on the issue, and closes it —
+  usually a few minutes. To re-run later, comment **`/rescore <npm-name>`** on the same issue.
+  For plugins *you* published (must carry the `signalk-node-server-plugin` keyword); after the
+  bot comments, re-fetch the JSON above for the machine-readable result (`triggered_by:
+  "manual"` marks these runs).
 - `no-plugin-ci` in the badges (or `plugin_ci.status: no-plugin-ci`) is the −10 — see the
   plugin-CI check below.
 - If a harness boolean is `false` (installs/loads/activates) or `test_status` isn't `passing`,
