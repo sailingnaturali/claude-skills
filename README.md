@@ -8,7 +8,7 @@ marine-AI stack.
 
 ```
 /plugin marketplace add sailingnaturali/claude-skills
-/plugin install signalk-plugin@sailingnaturali     # or signalk-apis@…, signalk-container-helper@…, signalk-e2e@…, git-worktrees@…, clipboard-fallback@…, coderabbit-cli@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
+/plugin install signalk-plugin@sailingnaturali     # or signalk-apis@…, signalk-container-helper@…, signalk-e2e@…, git-worktrees@…, clipboard-fallback@…, repo-scaffold@…, coderabbit-cli@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
 ```
 
 ## Plugins
@@ -124,6 +124,18 @@ same server, same browser, one origin secure, the other not). The recipe: gate o
 `document.execCommand('copy')` path — deprecated, but the only copy that works without TLS,
 so don't let a linter delete it. Plus: test via the LAN IP (localhost proves nothing), and
 paste has no insecure-context fallback at all.
+
+### `repo-scaffold`
+The repo scaffolding that has **already paid for itself** across maintained repos: agent
+conventions in `AGENTS.md` imported by `CLAUDE.md` via the **`@`-syntax** (a plain "See
+AGENTS.md" link does *not* load — observed live), `.gitattributes` `* text=auto eol=lf`
+(kills the Windows-CI ``Delete `␍` `` wall), a `format`/`ci-lint` script pair with the
+**read-only check in CI**, a weekly **Trivy** scan for container repos tuned to actionable
+findings (`ignore-unfixed`, HIGH/CRITICAL, SARIF → Security tab), **tag-triggered
+publishing** (npm via OIDC trusted publishing; GHCR with a narrowed tag glob treated as a
+coarse filter plus the mandatory in-job semver check it cannot replace, prerelease-safe
+`:latest`, and a `needs:`-gated Release), and **generated release notes** categorized by PR
+label — no hand-written changelog.
 
 ## Skill format policy
 
