@@ -134,8 +134,10 @@ AGENTS.md" link does *not* load — observed live), `.gitattributes` `* text=aut
 findings (`ignore-unfixed`, HIGH/CRITICAL, SARIF → Security tab), **tag-triggered
 publishing** (npm via OIDC trusted publishing; GHCR with a narrowed tag glob treated as a
 coarse filter plus the mandatory in-job semver check it cannot replace, prerelease-safe
-`:latest`, and a `needs:`-gated Release), and **generated release notes** categorized by PR
-label — no hand-written changelog.
+`:latest`, and a `needs:`-gated Release), the **verified release-please adoption path** (the
+standing Release PR; the GITHUB_TOKEN token-cascade fix via a dispatched publish at the tag
+ref; the default-off Actions-may-create-PRs setting; concurrency + `issues: write`), and
+**generated release notes** categorized by PR label — no hand-written changelog.
 
 ## Skill format policy
 
