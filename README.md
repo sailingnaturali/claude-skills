@@ -73,14 +73,16 @@ one core rule: gate the change on a green Playwright run and attach it as PR evi
 
 ### `coderabbit-cli`
 Driving the **[CodeRabbit](https://coderabbit.ai) CLI** (`cr`) as the review gate before opening
-a PR — the mechanics that waste rate-limited reviews when wrong: **commit first** and scope with
-`--committed` (a dirty-tree review can "pass" without seeing your work), pin the base with
-`--base-commit` (`--base` resolves against the *local* branch — a stale local main floods you
-with false positives), always **`tee` the output to a file** (the cooldown when the rate limit
-hits is on the order of an hour), `cr review findings` to re-read the last run without spending
-a new one, and `--agent` for structured findings (no `--plain` — plain is the default). Requires
-a CodeRabbit account; the diff is **uploaded to CodeRabbit's cloud** for analysis. Verified
-against `cr` 0.7.1.
+a PR — the **three mechanics that decide whether a rate-limited run counts**, which the official
+docs don't carry: **commit first** and scope with `--committed` (a dirty-tree review judges the
+wrong diff and can "pass" without seeing your work), **pin the base** with
+`--base-commit $(git merge-base origin/main HEAD)` (`--base` resolves against the *local*
+branch — a stale local main floods you with false positives), and **save the output before it's
+lost** (`tee` to a slash-sanitized path outside the tree; stderr kept out of `--agent`'s
+structured stream; `cr review findings` re-reads the last run for free). Plus the `--plain`
+removal trap, verified: 0.7.x errors on it while older docs still show it. Requires a CodeRabbit
+account; the diff is **uploaded to CodeRabbit's cloud**. The full flag reference is deliberately
+deferred to CodeRabbit's own CLI docs.
 
 ## Skill format policy
 

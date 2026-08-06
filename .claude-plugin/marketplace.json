@@ -80,7 +80,7 @@
     {
       "name": "coderabbit-cli",
       "source": "./coderabbit-cli",
-      "description": "Drive the CodeRabbit CLI (cr) as the review gate before opening a PR — commit-first --committed scoping, --base-commit pinning against a stale local base, rate-limit/tee discipline, cr review findings to re-read for free. Requires a CodeRabbit account; the diff is uploaded to CodeRabbit's cloud.",
+      "description": "Drive the CodeRabbit CLI (cr) as the review gate before opening a PR — the three mechanics that decide whether a rate-limited run counts: commit-first --committed scoping, --base-commit pinning against a stale local base, and saving output before it's lost (plus the --plain removal trap). Requires a CodeRabbit account; the diff is uploaded to CodeRabbit's cloud; full flag reference deferred to CodeRabbit's docs.",
       "author": { "name": "Dirk Wahrheit" },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
