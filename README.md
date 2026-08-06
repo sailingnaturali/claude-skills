@@ -79,8 +79,11 @@ AGENTS.md" link does *not* load — observed live), `.gitattributes` `* text=aut
 **read-only check in CI**, a weekly **Trivy** scan for container repos tuned to actionable
 findings (`ignore-unfixed`, HIGH/CRITICAL, SARIF → Security tab), **tag-triggered
 publishing** (npm via OIDC trusted publishing; GHCR with a tight dotted tag glob, semver
-validation, prerelease-safe `:latest`, and a `needs:`-gated Release), and **generated
-release notes** categorized by PR label — no hand-written changelog.
+validation, prerelease-safe `:latest`, and a `needs:`-gated Release), the **verified
+release-please adoption path** (the standing Release PR; the GITHUB_TOKEN token-cascade fix
+via a dispatched publish at the tag ref; the default-off Actions-may-create-PRs setting;
+concurrency + `issues: write`), and **generated release notes** categorized by PR label — no
+hand-written changelog.
 
 ## Skill format policy
 
