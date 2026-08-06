@@ -8,7 +8,7 @@ marine-AI stack.
 
 ```
 /plugin marketplace add sailingnaturali/claude-skills
-/plugin install signalk-plugin@sailingnaturali     # or signalk-container-helper@…, signalk-e2e@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
+/plugin install signalk-plugin@sailingnaturali     # or signalk-container-helper@…, signalk-e2e@…, repo-scaffold@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
 ```
 
 ## Plugins
@@ -70,6 +70,20 @@ one core rule: gate the change on a green Playwright run and attach it as PR evi
 - **`signalk-server-e2e`** — the SignalK-specific harness layered on top: spin up a local server
   on a scratch config, feed live data over the WebSocket delta stream, and the verified
   Freeboard-SK chart recipe. Defers the shared browser mechanics to `webapp-e2e`.
+
+### `repo-scaffold`
+The repo scaffolding that has **already paid for itself** across maintained repos: agent
+conventions in `AGENTS.md` imported by `CLAUDE.md` via the **`@`-syntax** (a plain "See
+AGENTS.md" link does *not* load — observed live), `.gitattributes` `* text=auto eol=lf`
+(kills the Windows-CI ``Delete `␍` `` wall), a `format`/`ci-lint` script pair with the
+**read-only check in CI**, a weekly **Trivy** scan for container repos tuned to actionable
+findings (`ignore-unfixed`, HIGH/CRITICAL, SARIF → Security tab), **tag-triggered
+publishing** (npm via OIDC trusted publishing; GHCR with a tight dotted tag glob, semver
+validation, prerelease-safe `:latest`, and a `needs:`-gated Release), the **verified
+release-please adoption path** (the standing Release PR; the GITHUB_TOKEN token-cascade fix
+via a dispatched publish at the tag ref; the default-off Actions-may-create-PRs setting;
+concurrency + `issues: write`), and **generated release notes** categorized by PR label — no
+hand-written changelog.
 
 ## Skill format policy
 
