@@ -8,7 +8,7 @@ marine-AI stack.
 
 ```
 /plugin marketplace add sailingnaturali/claude-skills
-/plugin install signalk-plugin@sailingnaturali     # or signalk-container-helper@…, signalk-e2e@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
+/plugin install signalk-plugin@sailingnaturali     # or signalk-container-helper@…, signalk-e2e@…, coderabbit-cli@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
 ```
 
 ## Plugins
@@ -70,6 +70,19 @@ one core rule: gate the change on a green Playwright run and attach it as PR evi
 - **`signalk-server-e2e`** — the SignalK-specific harness layered on top: spin up a local server
   on a scratch config, feed live data over the WebSocket delta stream, and the verified
   Freeboard-SK chart recipe. Defers the shared browser mechanics to `webapp-e2e`.
+
+### `coderabbit-cli`
+Driving the **[CodeRabbit](https://coderabbit.ai) CLI** (`cr`) as the review gate before opening
+a PR — the **three mechanics that decide whether a rate-limited run counts**, which the official
+docs don't carry: **commit first** and scope with `--committed` (a dirty-tree review judges the
+wrong diff and can "pass" without seeing your work), **pin the base** with
+`--base-commit $(git merge-base origin/main HEAD)` (`--base` resolves against the *local*
+branch — a stale local main floods you with false positives), and **save the output before it's
+lost** (`tee` to a slash-sanitized path outside the tree; stderr kept out of `--agent`'s
+structured stream; `cr review findings` re-reads the last run for free). Plus the `--plain`
+removal trap, verified: 0.7.x errors on it while older docs still show it. Requires a CodeRabbit
+account; the diff is **uploaded to CodeRabbit's cloud**. The full flag reference is deliberately
+deferred to CodeRabbit's own CLI docs.
 
 ## Skill format policy
 
