@@ -123,8 +123,14 @@ and armv7/Venus-OS (Cerbo). Add `.github/workflows/plugin-ci.yml`:
 ```yaml
 name: SignalK Plugin CI
 on:
-  push: { branches: ['**'] }
-  pull_request: { branches: ['**'] }
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   plugin-ci:
     uses: SignalK/signalk-server/.github/workflows/plugin-ci.yml@<release-sha> # vX.Y.Z
@@ -133,6 +139,21 @@ jobs:
 **Pin to a release commit SHA, never `@master`** (supply-chain safety + reproducibility), with the
 version in a trailing comment. Prereqs for green CI: a committed `package-lock.json` (the workflow
 runs `npm ci`) and a passing `npm test`.
+
+**Trigger on `main` and PRs — not `branches: ['**']`.** This template used to say
+`push: { branches: ['**'] }` / `pull_request: { branches: ['**'] }`, which runs the whole 9-job
+matrix **twice per commit** on a PR branch (once per event) and earns nothing extra. The registry
+samples a run on **`refs/heads/main`** — check `plugin_ci.workflow_ref` in the JSON from Check 0 —
+so main is the only branch whose runs feed the score. Seven `@sailingnaturali` plugins carried the
+wildcard before this was measured; one one-line dependency bump cost four full matrix runs.
+
+Scope `cancel-in-progress` to PR events so a superseded PR run is cancelled but **a main run never
+is** — that is the run the registry reads.
+
+**An `armv7-cerbo` failure does not cost points.** That leg is `continue-on-error` in SignalK's
+reusable workflow and is intermittently flaky under QEMU. A live payload with
+`"conclusion": "failure"` on armv7 still reported `plugin_ci.status: ok` and composite **100**.
+Confirm with the `jobs[]` array in the Check 0 JSON before chasing one.
 
 Verify the pin is present and current:
 
