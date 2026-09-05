@@ -1,6 +1,6 @@
 ---
 name: signalk-container-helper
-description: Use when building a SignalK server plugin that runs a Docker/Podman container through the signalk-container manager — the signalk-container-helper library that packages the container lifecycle (wait for the manager, validate the tag, self-heal, ensureRunning, wait for HTTP readiness, wire update routes, stop cleanly) and the shared React config-panel building blocks, so you stop hand-writing the same integration glue.
+description: Use when building a SignalK server plugin that reaches a service running in a Docker/Podman container through the signalk-container manager — the signalk-container-helper library that packages the container lifecycle (wait for the manager, validate the tag, self-heal, ensureRunning, wait for HTTP readiness, cancel and serialize operations, wire update routes, stop cleanly), the managed-vs-self-hosted endpoint switch, host path and device resolution, and the shared React config-panel building blocks, so you stop hand-writing the same integration glue.
 ---
 
 # Build a containerized SignalK plugin with signalk-container-helper
@@ -10,23 +10,23 @@ validate the image tag, call `ensureRunning`, wait for the app inside the contai
 HTTP, register for update detection, mount update routes, and stop cleanly.
 [`signalk-container-helper`](https://github.com/hoeken/signalk-container-helper) packages those
 patterns — extracted from `signalk-backup`, `mayara-server-signalk-plugin`, `signalk-doctor`,
-and `signalk-updater` — into one typed, zero-dependency API. It sits on top of the
-[`signalk-container`](https://github.com/dirkwa/signalk-container) manager plugin (which does
-the actual podman/docker work). Use this skill when a plugin needs to run a container; don't
-re-implement the lifecycle by hand.
+`signalk-questdb`, and `signalk-updater` — into one typed, zero-runtime-dependency API. It sits
+on top of the [`signalk-container`](https://github.com/dirkwa/signalk-container) manager plugin,
+which does the actual podman/docker work.
 
-> **Verified against `signalk-container-helper` v0.2.1 (July 2026).** The API surface (class
-> names, `start()` steps) and especially the version-floor table in §7 are version-sensitive and
-> will churn while the library is at 0.2.x — re-check them against the installed version before
-> relying on a specific number rather than debugging a mismatch.
+> **Verified against `signalk-container-helper` v0.11.0 (August 2026), manager 1.32.x.**
+> Version-sensitive claims — the export list, the error codes in §8, the manager floors — churn
+> while the library is at 0.x. Check them against the installed copy (`node_modules/signalk-container-helper/package.json`,
+> and `src/types.ts` for the floors) rather than debugging a mismatch. Numbers below are cited
+> where behaviour depends on them.
 
 ## 0. Wiring & constraints (get these right first)
 
-- **ESM only, Node ≥ 24.** The library ships as an ES module (`import`, not `require`); your
+- **ESM only, Node ≥ 22.** The library ships as an ES module (`import`, not `require`); your
   plugin must be ESM too.
 - **Runtime-only coupling — never add `signalk-container` to `dependencies`.** Its prerelease
-  versioning breaks npm semver ranges. Declare the relationship instead, and the library reaches
-  the manager through a runtime global:
+  versioning breaks npm semver ranges. Declare the relationship instead; the library reaches the
+  manager through a runtime global:
   ```json
   { "signalk": { "requires": ["signalk-container"] } }
   ```
@@ -34,25 +34,32 @@ re-implement the lifecycle by hand.
   time — not a dependency.
 - **`start()` must never throw.** The SignalK server does **not** await `start()`, so an async
   failure inside it becomes an unhandled rejection. Wrap async startup in `startSafely(app, fn)`.
-- Install: `npm install signalk-container-helper` (add `react` too, as a devDependency, only if
-  you use the `/ui` panel components).
+- **Three entry points.** `signalk-container-helper` (Node, dependency-free),
+  `…/schema` (plain JSON Schema fragments, also dependency-free), `…/ui` (browser React —
+  `react` is an optional peer, bundle-time only).
+- Install: `npm install signalk-container-helper`.
 
-## 1. Pick the archetype
+## 1. Pick the shape — by who owns the lifecycle, and whether a container is involved at all
 
-Two shapes, two classes. Choose by *who owns the container's lifecycle*.
+Three seams, not two. The first question is no longer "which class" but "is there a container".
 
-- **`ManagedContainer`** — your plugin owns the container (the `signalk-backup` / `mayara`
-  archetype). It pulls, creates, starts, updates, and stops it.
+- **`ManagedContainer`** — your plugin owns the container (`signalk-backup` / `mayara`). It
+  pulls, creates, starts, updates, and stops it.
 - **`AdoptedContainer`** — the container is managed elsewhere (a systemd Quadlet, an external
-  host — the `signalk-doctor` / `signalk-updater` archetype). You only register it for update
-  notifications and probe its health over HTTP; you **never** touch its lifecycle. Note:
-  `manager.getState()` can't see it — signalk-container namespace-prefixes what *it* manages
-  (`sk-<name>`), and adopted peers don't carry the prefix (and "running" ≠ "healthy" anyway).
+  host — `signalk-doctor` / `signalk-updater`). You only register it for update notifications
+  and probe its health over HTTP; you **never** touch its lifecycle. Note `manager.getState()`
+  can't see it: signalk-container namespace-prefixes what *it* manages (`sk-<name>`), adopted
+  peers don't carry the prefix, and "running" ≠ "healthy" anyway.
+- **Managed *or* self-hosted (`resolveEndpoint`)** — the operator chooses between a container
+  you manage and a service already running at a URL they supply. This is a config-level switch
+  over the same transport, and §4 covers it. "Self-hosted" means the *service* is remote, never
+  the container *engine*: signalk-container talks to local unix sockets only and throws on a
+  `tcp://` endpoint, so there is no remote-engine mode to model.
 
 ## 2. ManagedContainer — the lifecycle in one object
 
 ```ts
-import { ManagedContainer, startSafely } from "signalk-container-helper";
+import { ManagedContainer, resolveMount, startSafely } from "signalk-container-helper";
 
 let container: ManagedContainer | null = null;
 let settings: MyConfig;
@@ -69,8 +76,7 @@ function start(rawConfig: unknown) {
     buildConfig: (tag) => ({           // declarative & idempotent; SK-container recreates on drift
       image: "ghcr.io/example/myservice",
       tag,
-      signalkAccessiblePorts: [9000],  // let signalk-container wire networking (bare-metal or containerized)
-      signalkDataMount: "/data",       // plugin data dir, deployment-agnostic — no host paths
+      signalkAccessiblePorts: [9000],  // let signalk-container wire networking
       env: { LOG_LEVEL: "info" },
       restart: "unless-stopped",
       resources: { cpus: 1, memory: "512m", pidsLimit: 100 },
@@ -99,8 +105,48 @@ alphabetically — signalk-container may load after you) then for runtime detect
 validates the tag against `/^[a-zA-Z0-9._-]+$/`; **self-heals** (if the live image differs from
 desired, `recreate`s immediately instead of waiting on drift detection); `ensureRunning`;
 registers for updates (non-fatal); resolves the address for `readiness.port`; and waits for
-HTTP readiness. Progress is reported via `app.setPluginStatus`; the final "Running" line is
-yours.
+HTTP readiness. Progress goes to `app.setPluginStatus`; the final "Running" line is yours.
+
+### Mounting your plugin's data directory — not what the name suggests
+
+**`signalkDataMount` is signalk-container's OWN data dir, never yours.** The manager calls
+`app.getDataDirPath()` on its own app object and memoizes one module-level result shared by
+every consumer, so it is structurally incapable of varying per plugin — `pluginId` is manifest
+bookkeeping and never reaches mount resolution. Treat the field as "a private writable area
+inside the Signal K data tree", nothing more. To mount *your* directory, resolve it and pass a
+plain volume:
+
+```ts
+const mount = await resolveMount(manager, {
+  containerPath: "/data",
+  hostPath: app.getDataDirPath(),   // yours, resolved for bare-metal or containerized SK
+});
+// → { source, containerPath, subPath? } — pass as a normal `volumes` entry
+```
+
+Use the **returned** `containerPath` in your commands and config, not the one you passed in:
+it comes back with `subPath` already joined, so they differ whenever the mount resolved to a
+volume covering a parent.
+
+The named-volume rule matters here (manager **1.32.0+**): a volume attached *above* the target
+directory is refused at `ensureRunning` rather than mounted wholesale, because podman's
+Docker-compat endpoint ignores subpaths and would hand the container the volume's entire
+contents. **Below 1.32.0 that case is silently mounted** — a plugin asking for scratch space
+could receive the whole tree. `resolveMount` reports `subPath`, so a deliberately parent-backed
+volume stays your explicit choice. `resolveMount` needs manager ≥ 1.7.0 and throws
+`unsupported-manager` below it.
+
+### Cancellation and serialization (0.4.0+)
+
+`start`, `stop` and `applyUpdate` take `OperationOptions { signal }` and all run through one
+per-instance queue, so a stop during a start no longer races. This replaced roughly 85 lines of
+hand-rolled mutex, generation counter and AbortController in each consumer — delete yours.
+
+Cancellation is **cooperative, not pre-emptive**: signalk-container's `ensureRunning`,
+`recreate` and `stop` take no signal, so a call already in flight runs to completion. What
+aborts is everything around it — waiting for the manager global, the drift probe, readiness
+polling, and each step boundary. That is where the minutes actually go. A cancelled operation
+throws `ContainerHelperError` with code `cancelled`.
 
 ## 3. AdoptedContainer — register + health-probe, never manage
 
@@ -128,7 +174,56 @@ startSafely(app, async () => {
 // stop(): adopted.unregister();
 ```
 
-## 4. Update routes (the user owns updates)
+## 4. The managed / self-hosted switch (0.8–0.10)
+
+Let the operator run your service in a container you manage, *or* point at one they host
+themselves. Two halves, both in the library.
+
+**Config form** — `…/schema` emits **plain JSON Schema fragments, deliberately not TypeBox
+types**. Consumers are split across two mutually incompatible packages (`typebox` 1.x and
+`@sinclair/typebox` 0.34), and this split is **permanent, not a migration**: `@signalk/server-api`
+itself depends on the scoped 0.34, so it is in every consumer's tree regardless. Plain fragments
+are the one shape both accept.
+
+```ts
+import { managedModeSchema } from "signalk-container-helper/schema";
+const MODE = managedModeSchema({ productName: "myservice", image: "ghcr.io/example/myservice" });
+
+// Splice in with Type.Unsafe — identical under both TypeBox packages:
+//   managedContainer: Type.Unsafe<boolean>(MODE.managedContainer),
+//   externalUrl:      Type.Unsafe<string>(MODE.externalUrl),
+```
+
+Spreading a bare fragment into `Type.Object({...})` compiles under typebox 1.x and **fails**
+under `@sinclair/typebox` 0.34 ("missing the following properties from type 'TSchema'"), so the
+`Type.Unsafe` wrapper is not optional. It emits the same keys in a different *order*; compare
+sorted keys if you assert on emitted schema.
+
+**Runtime** — `resolveEndpoint` collapses both modes to one base URL:
+
+```ts
+import { resolveEndpoint, waitForEndpointReady } from "signalk-container-helper";
+
+const ep = await resolveEndpoint({
+  managed: settings.managedContainer,   // undefined MUST mean managed — see below
+  externalUrl: settings.externalUrl,
+  container,                            // or containerName, if you drive ensureRunning yourself
+});
+await waitForEndpointReady(ep, { path: "/api/health" });
+```
+
+Two traps worth stating plainly:
+
+- **`managed: undefined` means managed.** SignalK calls `start()` with `{}` when a plugin is
+  enabled but its form was never saved. Treating that as self-hosted breaks every such install.
+- **`mode === "managed"` does not imply `ep.container`.** It is null in self-hosted mode *and*
+  in managed mode when you passed `containerName`. Branch on `mode`; null-check `container`
+  separately.
+
+Since 0.10.0 the schema hides the external-URL field while managed mode is on, so the form
+doesn't ask for an address the plugin will ignore.
+
+## 5. Update routes (the user owns updates)
 
 Update detection *notifies*; *applying* is an explicit action. Mount the routes on the
 `IRouter` the server hands you and persist the **requested** tag, not the resolved version, so
@@ -147,14 +242,13 @@ function registerWithRouter(router) {
 //        POST /plugins/<id>/api/update/apply   { tag? }
 ```
 
-## 5. Config-panel UI (`signalk-container-helper/ui`)
+## 6. Config-panel UI (`signalk-container-helper/ui`)
 
-A separate browser-side subpath ships the React building blocks the reference plugins kept
-copy-pasting — `StatusCard`, `VersionSelect`, `UpdateControls`, form scaffolding, and the
-`useStatusPoll` / `useVersions` / `useUpdateFlow` hooks — plus a shared inline-style vocabulary
-(`panelStyles`). Inline styles are deliberate: a CSS file from a federation remote leaks into or
-is clobbered by the host Admin UI page. The core entry stays Node-only and dependency-free;
-`/ui` needs `react` (an optional peer, bundle-time only — the Admin UI provides the singleton).
+A browser-side subpath ships the React building blocks the reference plugins kept copy-pasting —
+`StatusCard`, `VersionSelect`, `UpdateControls`, form scaffolding, the `useStatusPoll` /
+`useVersions` / `useUpdateFlow` hooks — plus a shared inline-style vocabulary (`panelStyles`).
+Inline styles are deliberate: a CSS file from a federation remote leaks into or is clobbered by
+the host Admin UI page.
 
 **The federation gotcha that wastes the most time:** SignalK injects your panel's script tag
 based on your plugin's `package.json` `type` field. An ESM plugin (`"type": "module"`) is loaded
@@ -166,7 +260,7 @@ package's `type`. Verify:
 `node -e 'import("./public/remoteEntry.js").then(m => console.log(typeof m.get, typeof m.init))'`
 (both must print `function`).
 
-## 6. Conventions the library encodes — adopt them even without the components
+## 7. Conventions the library encodes — adopt them even without the components
 
 - **Offline is a state, not an error.** Boats lose connectivity; show "last checked 3h ago",
   don't fail the plugin or paint the panel red.
@@ -181,16 +275,29 @@ package's `type`. Verify:
   poll period; start the next request only after the previous settled, and drop stale responses.
 - **Parse status bodies on non-2xx.** A 503 often carries the very fields the operator needs.
 
-## 7. Errors & version compatibility (verified against signalk-container-helper v0.2.1, July 2026)
+## 8. Errors & version compatibility
 
-Everything the helpers throw is a typed `ContainerHelperError` with a `code`
-(`manager-unavailable`, `no-runtime`, `invalid-tag`, `address-unresolved`, `not-ready`,
-`recreate-limbo`) that has **already** been surfaced via `app.setPluginError` (`reported:
-true`), so `startSafely` won't double-report it. Newer signalk-container capabilities are
-feature-detected with graceful fallbacks: `recreate` (≥ 1.12.0 — self-heal is skipped below
-that), `getLogs` (≥ 1.7.0), `healthcheck` (≥ 1.14.0), `ulimits` (≥ 1.17.0),
-`devices`/`groupAdd` (≥ 1.24.0). Runtime floor is signalk-container ≥ 1.6.0; the type contract
-is validated against ≥ 1.23.2 (dev-only).
+Everything the helpers throw is a typed `ContainerHelperError` with a `code` that has
+**already** been surfaced via `app.setPluginError` (`reported: true`), so `startSafely` won't
+double-report it:
+
+`manager-unavailable`, `no-runtime`, `invalid-tag`, `address-unresolved`, `not-ready`,
+`recreate-limbo`, `cancelled`, `invalid-option`, `unsupported-manager`, `path-unreachable`,
+`external-url-missing`, `external-url-invalid`.
+
+Newer signalk-container capabilities are feature-detected with graceful fallbacks, so a plugin
+keeps working against an older manager and only loses the feature. Floors that change
+*behaviour* rather than availability: `recreate` (≥ 1.12.0 — self-heal is skipped below),
+`resolveHostPath` for `resolveMount` (≥ 1.7.0 — throws `unsupported-manager` below), and the
+named-volume scope rule (≥ 1.32.0 — refuses above the target directory; **silently over-mounts
+below**). Runtime floor is signalk-container ≥ 1.6.0; the type contract is validated against a
+newer one at build time (dev-only, see the library README for the current number).
+
+Other exports worth knowing before you write your own: `retryForever` / `anySignal` (bounded
+retry with composed abort signals), `probeHostDevice` (does `/dev/...` exist and is it usable),
+`normalizeExternalUrl` (operator input → scheme-ful, trailing-slash-free base), and
+`fetchWithTimeout` / `waitForHttpReady` / `probeHttpHealth`. On `ManagedContainer` itself,
+`getStateDetail()` surfaces richer manager state (degrades on signalk-container < 1.31.0).
 
 ## Testing
 
