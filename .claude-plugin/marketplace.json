@@ -112,6 +112,15 @@
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
       "keywords": ["clipboard", "webapp", "http", "secure-context", "frontend"]
+    },
+    {
+      "name": "repo-scaffold",
+      "source": "./repo-scaffold",
+      "description": "Repo scaffolding that pays rent — AGENTS.md imported by CLAUDE.md via @-syntax (a plain link doesn't load), .gitattributes eol=lf (the Windows-CI Delete-␍ fix), a format/ci-lint script pair with the read-only check in CI, a weekly actionable-only Trivy scan for container repos, tag-triggered publishing (npm OIDC / GHCR with tight dotted tag globs and prerelease-safe latest), the verified release-please adoption path (token-cascade dispatch, Actions-may-create-PRs setting), and label-categorized generated release notes.",
+      "author": { "name": "Dirk Wahrheit" },
+      "repository": "https://github.com/sailingnaturali/claude-skills",
+      "license": "MIT",
+      "keywords": ["scaffolding", "ci", "github-actions", "release", "lint", "trivy"]
     }
   ]
 }
