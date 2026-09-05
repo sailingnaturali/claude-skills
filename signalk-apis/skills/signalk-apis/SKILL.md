@@ -58,12 +58,20 @@ New code typically uses both: stream positions over v1 while setting the course 
 - **Conventions:** `_default` targets the default device (`…/autopilots/_default/engage`),
   `_providers` / `?provider=<id>` targets a specific provider, `_config` addresses API
   configuration. Multi-device and multi-provider APIs all follow these.
-- **Auth:** with security disabled, everything is open; with security enabled and
-  `allow_readonly` on (the common setup), reads stay anonymous. Writes and protected reads
-  need a token: `POST /signalk/v1/auth/login` with
+- **Auth:** with security disabled, the data and configuration routes above are open; with
+  security enabled and `allow_readonly` on (the common setup), reads stay anonymous. Writes
+  and protected reads need a token: `POST /signalk/v1/auth/login` with
   `{ "username", "password" }`, then send it as a `Bearer` header (REST) or let the cookie
   ride (browser + WebSocket). Everything under `/skServer/*` and `/plugins/*` is **admin** —
   that's server-configuration surface, not data.
+- **"Security disabled" is not "everything open" — `applicationData` inverts it.**
+  `/signalk/v1/applicationData/{global,user}/…` is per-user/per-app storage, so it is
+  *disabled* when security is off rather than unguarded: the interface sees
+  `securityStrategy.isDummy()` and returns early, registering only `POST` handlers that
+  answer `405 security is not enabled`. The `GET` handlers are never registered at all on
+  that path, so reads fall through to a plain `404` rather than a 405. Enable security and
+  both appear, `global` behind admin-write and `user` behind write. Verified in
+  signalk-server 2.30.0+ (`src/interfaces/applicationData.js`).
 
 ## Provider side (server plugins)
 
