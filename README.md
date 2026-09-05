@@ -39,7 +39,10 @@ Module-Federation remote, never throwing out of `start()`, "offline is a state n
 ### `signalk-registry`
 Check a SignalK plugin's expected [registry](https://signalk.org/signalk-plugin-registry/) score
 before publishing — evaluates screenshots, changelog, audit, and version-collision risk (the
-locally-checkable criteria) and outputs a score card with what each gap costs.
+locally-checkable criteria) and outputs a score card with what each gap costs. After shipping a
+fix, **trigger an on-demand re-score** with the registry's `[rescore]` issue template (bot
+scans, comments the new score, closes the issue in minutes — `/rescore <npm-name>` re-runs it)
+instead of waiting for the nightly.
 
 ### `npm-oidc-publish`
 Publishing **any** npm package from GitHub Actions via **OIDC trusted publishing** — no

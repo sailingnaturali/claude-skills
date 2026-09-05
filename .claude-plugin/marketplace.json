@@ -35,7 +35,7 @@
     {
       "name": "signalk-registry",
       "source": "./signalk-registry",
-      "description": "Preview your expected SignalK registry score before publishing — screenshots, changelog, and audit gaps that cost points, with the score you'd likely receive.",
+      "description": "Preview your expected SignalK registry score before publishing — screenshots, changelog, and audit gaps that cost points, with the score you'd likely receive — and trigger an on-demand re-score via the registry's [rescore] issue template instead of waiting for the nightly run.",
       "author": { "name": "Bryan Clark" },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",

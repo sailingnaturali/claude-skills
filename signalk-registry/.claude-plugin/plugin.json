@@ -1,7 +1,7 @@
 {
   "name": "signalk-registry",
   "description": "Preview your expected SignalK registry score before publishing — screenshots, changelog, and audit gaps that cost points, with the score you'd likely receive.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": { "name": "Bryan Clark" },
   "license": "MIT",
   "keywords": ["signalk", "marine", "registry", "publishing", "score"]
