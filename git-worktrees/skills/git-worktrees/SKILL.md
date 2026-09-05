@@ -17,13 +17,22 @@ repository, each with its own branch, files, and installs.
 - **Create a sibling directory, named `<repo>-<topic>`:**
 
   ```bash
-  git worktree add ../myrepo-featurex -b featurex upstream/main
+  git worktree add ../myrepo-featurex -b featurex origin/main
   ```
 
   The path lives *outside* the main checkout. Everything git-tracked appears there; the object
   store, branch and remote-tracking refs, and stashes stay shared — a `git fetch` in any
   worktree is visible in all of them — while each worktree keeps its own `HEAD` and index.
   Disk cost is one checkout plus its installs, not a second clone.
+
+  The last argument is the *start point*, and it has to be a ref that exists locally. A plain
+  clone has only `origin`, so `origin/main` is the safe default; on a fork you also have
+  `upstream`, and branching off the true upstream (`upstream/main`) rather than your fork's
+  stale mirror is usually what you want. Substitute the remote and the default branch to
+  match the repo — `git remote` and `git branch -r` tell you what exists. A start point that
+  does not resolve fails the command outright with
+  `fatal: invalid reference: <remote>/<branch>`, so this is a typo you find immediately, not
+  one that silently branches off the wrong base.
 
 - **One branch ↔ one worktree, enforced.** Checking out a branch that another worktree holds
   fails: `fatal: '<branch>' is already used by worktree at '<path>'`. That refusal is the feature —
