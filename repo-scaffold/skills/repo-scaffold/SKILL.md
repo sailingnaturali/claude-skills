@@ -1,6 +1,6 @@
 ---
 name: repo-scaffold
-description: Use when creating a repository or upgrading its scaffolding — agent context files, line-ending normalization, format/lint CI, container CVE scanning, tag-triggered publishing, release automation, and generated release notes. Encodes the working set from maintained repos, CLAUDE.md importing AGENTS.md via the @-syntax (a plain link does not load), .gitattributes eol=lf (the Windows-CI "Delete ␍" fix), prettier+eslint as a read-only CI gate, a weekly Trivy scan tuned to actionable findings, tight dotted semver tag globs with prerelease-safe latest, the verified release-please adoption path (token-cascade dispatch, the Actions-may-create-PRs setting, concurrency, issues-write), and label-categorized release notes.
+description: Use when creating a repository or upgrading its scaffolding — agent context files, line-ending normalization, format/lint CI, container CVE scanning, tag-triggered publishing, release automation, and generated release notes. Encodes the working set from maintained repos, CLAUDE.md importing AGENTS.md via the @-syntax (a plain link does not load), .gitattributes eol=lf (the Windows-CI "Delete ␍" fix), prettier+eslint as a read-only CI gate, a weekly Trivy scan tuned to actionable findings, tag globs as a coarse filter backed by a mandatory in-job semver check, prerelease-safe latest, the verified release-please adoption path (token-cascade dispatch, the Actions-may-create-PRs setting, concurrency, issues-write), and label-categorized release notes.
 ---
 
 # Repo scaffolding that pays rent
@@ -72,20 +72,52 @@ workflow):
   one manual CLI+OTP publish before a trusted publisher can be configured for it.
 - **Container images: GHCR via `GITHUB_TOKEN`** — job permissions `contents: read` +
   `packages: write` — with the details that bite:
-  - Make the tag glob **tight and dotted**: `"v[0-9]*.[0-9]*.[0-9]*"`. A bare `v*` fires on
-    `vnext` or `vendor-fix`; even `v[0-9]*` fires on `v1-anything` (the glob is unanchored
-    after the digit — this bit a real repo whose `v1-keeper-final` tag matched). Belt-and-braces:
-    validate the resolved version against a strict semver regex in the job —
-    `workflow_dispatch` inputs are free text.
+  - **The tag glob is a coarse filter, not validation.** Narrow it —
+    `"v[0-9]*.[0-9]*.[0-9]*"` beats a bare `v*`, which fires on `vnext` or `vendor-fix` — but
+    do not mistake it for a semver check. GitHub's filter syntax is glob, not regex: `[0-9]`
+    matches one digit and the following `*` matches *anything*, so each component is "a digit
+    then whatever". `v1x.2y.3z`, `v1abc.2def.3ghi` and `v1.2.3.4` all match this "tight"
+    pattern. It only buys you the leading-digit-per-component shape; `v1-keeper-final` is
+    excluded, `v1zzz.0zzz.0zzz` is not.
+  - **So validate in the job — this step is mandatory, not belt-and-braces.** The glob cannot
+    anchor and `workflow_dispatch` inputs are free text, so the only real gate is an explicit
+    check that fails the job before anything is published:
+
+    ```yaml
+    - name: Validate version is strict semver
+      run: |
+        VERSION="${GITHUB_REF_NAME#v}"
+        # MAJOR.MINOR.PATCH with optional -prerelease and +build (semver.org BNF)
+        if ! printf '%s' "$VERSION" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+          echo "::error::Tag '$GITHUB_REF_NAME' is not strict semver - refusing to publish."
+          exit 1
+        fi
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+    ```
+
+    Note the `(0|[1-9][0-9]*)` components: they reject leading zeros (`v01.2.3`) as semver
+    requires, which a naive `[0-9]+` would let through.
   - **Prereleases never move `:latest`**: any version with a prerelease suffix (`-beta.1`,
     `-rc.2`, `-alpha.1`, …) publishes `:VERSION` only — key the check on "has a prerelease
     part", not on an enumerated list, or the next suffix style slips through.
   - Create the GitHub Release in a separate job with `needs: publish`, so a failed image
     push can't leave a Release pointing at an image that never reached the registry. Derive
     `prerelease:` from the tag name.
-- Pin actions by **version tag** (`actions/checkout@v6`), not by commit SHA — tags stay
-  readable and Dependabot-updatable. If an org policy mandates SHA pins, that overrides;
-  otherwise treat scanner findings demanding SHA pins as a policy choice, not a defect.
+- **Action pinning is a real tradeoff — pick one and apply it repo-wide.** A version tag
+  (`actions/checkout@v6`) is *mutable*: the tag can be repointed at a new commit, so it is a
+  trust decision about the publisher, not a cryptographic guarantee. Only a full commit SHA
+  (`actions/checkout@<40-char-sha> # v6`) is immutable, and Dependabot updates SHA pins in
+  place when that trailing version comment is kept.
+  This scaffold defaults to **version tags** for first-party (`actions/*`, `docker/*`) and
+  established third-party actions: readable diffs, no churn, and the same style across every
+  workflow in the repo. The cost is accepting the publisher's tag hygiene.
+  Choose **SHA pins** when the workflow's blast radius justifies it — anything holding
+  `id-token: write` (OIDC publish), `packages: write` (registry push), or `actions: write`,
+  and any less-established action — or when org policy mandates it. Both publish workflows
+  above are in that category, so this is a live choice, not a formality.
+  Whichever you pick, be consistent: a lone SHA-pinned step among tagged ones is noise, and
+  mixed styles make scanner findings unreadable. Treat a scanner's blanket "pin to SHA"
+  finding as this policy question, not a defect.
 
 ### Or automate the whole ritual: release-please (verified end-to-end)
 
