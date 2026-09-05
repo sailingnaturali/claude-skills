@@ -121,26 +121,59 @@ const mount = await resolveMount(manager, {
   containerPath: "/data",
   hostPath: app.getDataDirPath(),   // yours, resolved for bare-metal or containerized SK
 });
-// → { source, containerPath, subPath? } — pass as a normal `volumes` entry
+// → { source, containerPath, subPath? }
+if (mount.subPath) {
+  // The source is a named volume covering a PARENT of your directory. Nothing
+  // narrows it — decide here, do not let it through by default.
+  throw new Error(
+    `refusing to mount volume '${mount.source}' — it covers more than ${app.getDataDirPath()}`,
+  );
+}
+const config = {
+  volumes: { "/data": mount.source },  // the mount point you asked for
+  env: { DATA_DIR: mount.containerPath }, // where YOUR files actually land inside
+};
 ```
 
-Use the **returned** `containerPath` in your commands and config, not the one you passed in:
-it comes back with `subPath` already joined, so they differ whenever the mount resolved to a
-volume covering a parent.
+Two things this recipe does not do for you.
 
-The named-volume rule matters here (manager **1.32.0+**): a volume attached *above* the target
-directory is refused at `ensureRunning` rather than mounted wholesale, because podman's
-Docker-compat endpoint ignores subpaths and would hand the container the volume's entire
-contents. **Below 1.32.0 that case is silently mounted** — a plugin asking for scratch space
-could receive the whole tree. `resolveMount` reports `subPath`, so a deliberately parent-backed
-volume stays your explicit choice. `resolveMount` needs manager ≥ 1.7.0 and throws
-`unsupported-manager` below it.
+**`subPath` is a warning, not isolation.** When `resolveMount` returns a non-empty `subPath`,
+the source is a named volume attached above your directory, and mounting it hands the container
+that volume's **entire contents** — sibling plugins' data, or the whole config tree including
+`security.json`. Neither runtime can narrow it: podman's Docker-compat endpoint accepts and
+silently ignores `VolumeOptions.Subpath` (measured on 5.4.2), so the field only tells you the
+exposure exists. Reject or knowingly accept it, as above.
+
+**The 1.32.0 refusal does not cover this path.** The manager's
+`assertVolumeIsNotBroaderThanRequested` guard runs only for the convenience fields
+`signalkDataMount` and `signalkConfigRootMount`. Explicit `config.volumes` entries — what this
+recipe produces — are converted straight to whole-volume binds with no such check, on 1.32.0
+and above. So the guarantee is: use `signalkDataMount` and 1.32.0+ refuses an over-broad volume
+(**below 1.32.0 it is silently mounted**); resolve it yourself and the decision is entirely
+yours, which is exactly why `resolveMount` reports `subPath`.
+
+`resolveMount` needs manager ≥ 1.7.0 and throws `unsupported-manager` below it. Use the
+**returned** `containerPath` for your service's data path — it has `subPath` already joined, so
+it differs from what you passed whenever the mount is parent-backed.
 
 ### Cancellation and serialization (0.4.0+)
 
-`start`, `stop` and `applyUpdate` take `OperationOptions { signal }` and all run through one
-per-instance queue, so a stop during a start no longer races. This replaced roughly 85 lines of
-hand-rolled mutex, generation counter and AbortController in each consumer — delete yours.
+All three lifecycle calls run through one per-instance queue, so a stop during a start no
+longer races — **delete your mutex and generation counter**. But keep your AbortController:
+serialization and cancellation are separate, and only `start` and `applyUpdate` take
+`OperationOptions { signal }`. `stop()` takes **no arguments**; it queues teardown behind the
+running operation rather than interrupting it, so on its own it cannot cut short a start that
+is mid-readiness-wait.
+
+```ts
+const ac = new AbortController();
+startSafely(app, () => container!.start(tag, { signal: ac.signal }));
+
+async function stop() {
+  ac.abort();              // ends the manager wait / readiness poll in flight
+  await container?.stop(); // then tear down
+}
+```
 
 Cancellation is **cooperative, not pre-emptive**: signalk-container's `ensureRunning`,
 `recreate` and `stop` take no signal, so a call already in flight runs to completion. What
@@ -186,12 +219,26 @@ itself depends on the scoped 0.34, so it is in every consumer's tree regardless.
 are the one shape both accept.
 
 ```ts
-import { managedModeSchema } from "signalk-container-helper/schema";
+import { managedModeSchema, type WithExternalUrl } from "signalk-container-helper/schema";
 const MODE = managedModeSchema({ productName: "myservice", image: "ghcr.io/example/myservice" });
 
-// Splice in with Type.Unsafe — identical under both TypeBox packages:
-//   managedContainer: Type.Unsafe<boolean>(MODE.managedContainer),
-//   externalUrl:      Type.Unsafe<string>(MODE.externalUrl),
+// Always-visible: both fields in `properties`. Simplest, and the URL field
+// shows even while managed mode is on.
+const ConfigSchema = Type.Object({
+  managedContainer: Type.Unsafe<boolean>(MODE.managedContainer),
+  externalUrl:      Type.Unsafe<string>(MODE.externalUrl),
+});
+
+// Hidden-while-managed: externalUrl must be OUT of `properties` and reach the
+// form through `dependencies` — RJSF renders anything in `properties`
+// regardless of what a dependency says.
+const ConfigSchema2 = Type.Object(
+  { managedContainer: Type.Unsafe<boolean>(MODE.managedContainer) },
+  { dependencies: MODE.dependencies },
+);
+// TypeBox derives Static<> from `properties` alone, so add the field back to
+// the type or every settings.externalUrl read stops compiling:
+export type Config = WithExternalUrl<Static<typeof ConfigSchema2>>;
 ```
 
 Spreading a bare fragment into `Type.Object({...})` compiles under typebox 1.x and **fails**
@@ -205,14 +252,21 @@ sorted keys if you assert on emitted schema.
 import { resolveEndpoint, waitForEndpointReady } from "signalk-container-helper";
 
 const ep = await resolveEndpoint({
+  productName: "myservice",             // required — names the product in every error
   managed: settings.managedContainer,   // undefined MUST mean managed — see below
   externalUrl: settings.externalUrl,
-  container,                            // or containerName, if you drive ensureRunning yourself
+  container,                            // must ALREADY be started; this does not start it
+  port: 9000,                           // required in managed mode, even with readiness set
 });
 await waitForEndpointReady(ep, { path: "/api/health" });
 ```
 
-Two traps worth stating plainly:
+`productName` and — in managed mode — `port` are both mandatory. Configuring `readiness.port`
+on the `ManagedContainer` does *not* satisfy the latter: managed mode throws `invalid-option`
+without an explicit `port`, so omitting it fails on every managed startup rather than at
+review time.
+
+Three traps worth stating plainly:
 
 - **`managed: undefined` means managed.** SignalK calls `start()` with `{}` when a plugin is
   enabled but its form was never saved. Treating that as self-hosted breaks every such install.
@@ -220,8 +274,11 @@ Two traps worth stating plainly:
   in managed mode when you passed `containerName`. Branch on `mode`; null-check `container`
   separately.
 
-Since 0.10.0 the schema hides the external-URL field while managed mode is on, so the form
-doesn't ask for an address the plugin will ignore.
+Since 0.10.0 the schema *can* hide the external-URL field while managed mode is on, so the form
+doesn't ask for an address the plugin will ignore — but only via the `dependencies` wiring
+above. It is opt-in, not automatic. Prefer it over `ui:disabled`, which cannot react: a
+plugin's uiSchema is fetched once when the form loads, so a greyed-out field stays greyed until
+a page reload, while a dependency re-evaluates the moment the toggle flips.
 
 ## 5. Update routes (the user owns updates)
 
