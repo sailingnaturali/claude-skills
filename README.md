@@ -8,7 +8,7 @@ marine-AI stack.
 
 ```
 /plugin marketplace add sailingnaturali/claude-skills
-/plugin install signalk-plugin@sailingnaturali     # or signalk-apis@…, signalk-container-helper@…, signalk-e2e@…, coderabbit-cli@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
+/plugin install signalk-plugin@sailingnaturali     # or signalk-apis@…, signalk-container-helper@…, signalk-e2e@…, git-worktrees@…, coderabbit-cli@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
 ```
 
 ## Plugins
@@ -104,6 +104,16 @@ Carries the verified specifics: the discovery document advertises v1 only, a v2 
 "no provider" rather than "no API" (the resources 404→200 flip), the history 501, the v1 PUT
 request envelope, `_default`/`_providers`/`_config` conventions, and why consumer data must
 never live behind admin-gated `/plugins/<id>/*` routes. Verified against signalk-server 2.30.0.
+
+### `git-worktrees`
+Running **parallel sessions on one repo** — several agent/dev sessions, a background review or
+build that must not be disturbed, a quick PR checkout — with `git worktree`: one directory per
+branch (own `node_modules`, own build output) over a shared object store, and git itself
+refuses to check the same branch out twice, turning session collisions into loud errors. Carries
+the verified mechanics: nothing gitignored comes along (install per worktree — that's the
+point), `rm -rf` leaves a stale `prunable` registration (`git worktree remove`/`prune`), and
+worktrees never go in `/tmp` — it's tmpfs, so a `node_modules` there eats RAM and dies on
+reboot.
 
 ## Skill format policy
 
