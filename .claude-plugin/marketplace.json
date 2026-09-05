@@ -8,119 +8,230 @@
     {
       "name": "oss-branch-protection",
       "source": "./oss-branch-protection",
-      "description": "Apply a consistent branch-protection template across all public repos in a GitHub org — admin-exempt (maintainer keeps direct-commit/force-push), CI-gated merges for contributors, force-push/deletion blocked. Idempotent applier that derives each repo's required CI check automatically.",
-      "author": { "name": "Bryan Clark" },
+      "description": "Apply a consistent branch-protection template across all public repos in a GitHub org \u2014 admin-exempt (maintainer keeps direct-commit/force-push), CI-gated merges for contributors, force-push/deletion blocked. Idempotent applier that derives each repo's required CI check automatically.",
+      "author": {
+        "name": "Bryan Clark"
+      },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
-      "keywords": ["github", "branch-protection", "oss", "ci", "governance"]
+      "keywords": [
+        "github",
+        "branch-protection",
+        "oss",
+        "ci",
+        "governance"
+      ]
     },
     {
       "name": "signalk-plugin",
       "source": "./signalk-plugin",
-      "description": "Author and publish a SignalK server plugin — the @signalk/server-api patterns that work (resource provider vs router, deltas, position), the ESM scaffold, TypeBox config schemas, the no-install-scripts rule (app store uses --ignore-scripts; containerize heavy parts), storage locations (config vs data dir vs applicationData — never node_modules), and OIDC trusted publishing.",
-      "author": { "name": "Bryan Clark" },
+      "description": "Author and publish a SignalK server plugin \u2014 the @signalk/server-api patterns that work (resource provider vs router, deltas, position), the ESM scaffold, TypeBox config schemas, the no-install-scripts rule (app store uses --ignore-scripts; containerize heavy parts), storage locations (config vs data dir vs applicationData \u2014 never node_modules), and OIDC trusted publishing.",
+      "author": {
+        "name": "Bryan Clark"
+      },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
-      "keywords": ["signalk", "marine", "npm", "publishing", "plugin"]
+      "keywords": [
+        "signalk",
+        "marine",
+        "npm",
+        "publishing",
+        "plugin"
+      ]
     },
     {
       "name": "signalk-container-helper",
       "source": "./signalk-container-helper",
-      "description": "Build a SignalK plugin that runs a Docker/Podman container via the signalk-container manager — the signalk-container-helper library packages the lifecycle (start, HTTP readiness, updates, clean stop) and the shared React config-panel components.",
-      "author": { "name": "Dirk Wahrheit" },
+      "description": "Build a SignalK plugin that reaches a service in a Docker/Podman container via the signalk-container manager \u2014 the signalk-container-helper library packages the lifecycle (start, HTTP readiness, cancellable serialized operations, updates, clean stop), the managed-vs-self-hosted endpoint switch, host path/device resolution, and the shared React config-panel components.",
+      "author": {
+        "name": "Dirk Wahrheit"
+      },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
-      "keywords": ["signalk", "marine", "container", "docker", "podman", "plugin"]
+      "keywords": [
+        "signalk",
+        "marine",
+        "container",
+        "docker",
+        "podman",
+        "plugin"
+      ]
     },
     {
       "name": "signalk-registry",
       "source": "./signalk-registry",
-      "description": "Preview your expected SignalK registry score before publishing — screenshots, changelog, and audit gaps that cost points, with the score you'd likely receive — and trigger an on-demand re-score via the registry's [rescore] issue template instead of waiting for the nightly run.",
-      "author": { "name": "Bryan Clark" },
+      "description": "Preview your expected SignalK registry score before publishing \u2014 screenshots, changelog, and audit gaps that cost points, with the score you'd likely receive \u2014 and trigger an on-demand re-score via the registry's [rescore] issue template instead of waiting for the nightly run.",
+      "author": {
+        "name": "Bryan Clark"
+      },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
-      "keywords": ["signalk", "marine", "registry", "publishing", "score"]
+      "keywords": [
+        "signalk",
+        "marine",
+        "registry",
+        "publishing",
+        "score"
+      ]
     },
     {
       "name": "npm-oidc-publish",
       "source": "./npm-oidc-publish",
-      "description": "Publish an npm package from GitHub Actions via OIDC trusted publishing — no NPM_TOKEN, no OTP in CI; the new-package first-publish flow and the registry-propagation 404 gotcha.",
-      "author": { "name": "Bryan Clark" },
+      "description": "Publish an npm package from GitHub Actions via OIDC trusted publishing \u2014 no NPM_TOKEN, no OTP in CI; the new-package first-publish flow and the registry-propagation 404 gotcha.",
+      "author": {
+        "name": "Bryan Clark"
+      },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
-      "keywords": ["npm", "publishing", "oidc", "github-actions", "ci"]
+      "keywords": [
+        "npm",
+        "publishing",
+        "oidc",
+        "github-actions",
+        "ci"
+      ]
     },
     {
       "name": "debug-mcp-agent",
       "source": "./debug-mcp-agent",
       "description": "Debug an MCP / tool-backed AI agent: probe ground truth before trusting the agent's account of itself (404-vs-error, which-model, server-down vs missing-data, auth-vs-absence).",
-      "author": { "name": "Bryan Clark" },
+      "author": {
+        "name": "Bryan Clark"
+      },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
-      "keywords": ["mcp", "agent", "debugging", "ai", "tools"]
+      "keywords": [
+        "mcp",
+        "agent",
+        "debugging",
+        "ai",
+        "tools"
+      ]
     },
     {
       "name": "record-web-gif",
       "source": "./record-web-gif",
-      "description": "Record a running web app (dev server or live URL) to a clean GIF for a README/PR/demo — puppeteer-core + system Chrome + ffmpeg, with the headless WebGL/canvas blank-frame gotcha handled.",
-      "author": { "name": "Bryan Clark" },
+      "description": "Record a running web app (dev server or live URL) to a clean GIF for a README/PR/demo \u2014 puppeteer-core + system Chrome + ffmpeg, with the headless WebGL/canvas blank-frame gotcha handled.",
+      "author": {
+        "name": "Bryan Clark"
+      },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
-      "keywords": ["gif", "recording", "puppeteer", "ffmpeg", "demo", "readme", "webgl"]
+      "keywords": [
+        "gif",
+        "recording",
+        "puppeteer",
+        "ffmpeg",
+        "demo",
+        "readme",
+        "webgl"
+      ]
     },
     {
       "name": "signalk-e2e",
       "source": "./signalk-e2e",
-      "description": "Browser-level end-to-end testing before you open the PR — two co-installed skills: webapp-e2e drives any web app (dev server, live URL, isolated Module-Federation component) with the repo's bundled Playwright chromium; signalk-server-e2e adds the SignalK-specific harness (scratch-config server spin-up, WebSocket delta feed, the Freeboard-SK chart recipe). Both handle the headless blank-canvas gotcha and gate the change on a green run attached as PR evidence.",
-      "author": { "name": "Dirk Wahrheit" },
+      "description": "Browser-level end-to-end testing before you open the PR \u2014 two co-installed skills: webapp-e2e drives any web app (dev server, live URL, isolated Module-Federation component) with the repo's bundled Playwright chromium; signalk-server-e2e adds the SignalK-specific harness (scratch-config server spin-up, WebSocket delta feed, the Freeboard-SK chart recipe). Both handle the headless blank-canvas gotcha and gate the change on a green run attached as PR evidence.",
+      "author": {
+        "name": "Dirk Wahrheit"
+      },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
-      "keywords": ["signalk", "marine", "e2e", "playwright", "testing", "browser", "webapp"]
+      "keywords": [
+        "signalk",
+        "marine",
+        "e2e",
+        "playwright",
+        "testing",
+        "browser",
+        "webapp"
+      ]
     },
     {
       "name": "coderabbit-cli",
       "source": "./coderabbit-cli",
-      "description": "Drive the CodeRabbit CLI (cr) as the review gate before opening a PR — the three mechanics that decide whether a rate-limited run counts: commit-first --committed scoping, --base-commit pinning against a stale local base, and saving output before it's lost (plus the --plain removal trap). Requires a CodeRabbit account; the diff is uploaded to CodeRabbit's cloud; full flag reference deferred to CodeRabbit's docs.",
-      "author": { "name": "Dirk Wahrheit" },
+      "description": "Drive the CodeRabbit CLI (cr) as the review gate before opening a PR \u2014 the three mechanics that decide whether a rate-limited run counts: commit-first --committed scoping, --base-commit pinning against a stale local base, and saving output before it's lost (plus the --plain removal trap). Requires a CodeRabbit account; the diff is uploaded to CodeRabbit's cloud; full flag reference deferred to CodeRabbit's docs.",
+      "author": {
+        "name": "Dirk Wahrheit"
+      },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
-      "keywords": ["code-review", "coderabbit", "pr", "quality", "ci"]
+      "keywords": [
+        "code-review",
+        "coderabbit",
+        "pr",
+        "quality",
+        "ci"
+      ]
     },
     {
       "name": "signalk-apis",
       "source": "./signalk-apis",
-      "description": "Work with the Signal K server APIs as consumer or provider — v1 is the data-model API (tree REST, delta stream, PUT actuation), v2 is purpose-built domain APIs (course, resources, notifications, history, autopilot) backed by provider plugins: different jobs, not successive versions. Covers discovery, response envelopes, auth levels, provider registration, and the admin-gated plugin-route gotcha.",
-      "author": { "name": "Dirk Wahrheit" },
+      "description": "Work with the Signal K server APIs as consumer or provider \u2014 v1 is the data-model API (tree REST, delta stream, PUT actuation), v2 is purpose-built domain APIs (course, resources, notifications, history, autopilot) backed by provider plugins: different jobs, not successive versions. Covers discovery, response envelopes, auth levels, provider registration, and the admin-gated plugin-route gotcha.",
+      "author": {
+        "name": "Dirk Wahrheit"
+      },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
-      "keywords": ["signalk", "marine", "api", "rest", "websocket", "provider"]
+      "keywords": [
+        "signalk",
+        "marine",
+        "api",
+        "rest",
+        "websocket",
+        "provider"
+      ]
     },
     {
       "name": "git-worktrees",
       "source": "./git-worktrees",
-      "description": "Run parallel sessions on one repo with git worktrees — per-branch directories and per-branch installs over a shared object store, git-enforced branch exclusivity, remove/prune done right (rm -rf leaves stale registrations), and the tmpfs warning: never put a worktree or scratch checkout in /tmp.",
-      "author": { "name": "Dirk Wahrheit" },
+      "description": "Run parallel sessions on one repo with git worktrees \u2014 per-branch directories and per-branch installs over a shared object store, git-enforced branch exclusivity, remove/prune done right (rm -rf leaves stale registrations), and the tmpfs warning: never put a worktree or scratch checkout in /tmp.",
+      "author": {
+        "name": "Dirk Wahrheit"
+      },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
-      "keywords": ["git", "worktree", "workflow", "parallel", "agents"]
+      "keywords": [
+        "git",
+        "worktree",
+        "workflow",
+        "parallel",
+        "agents"
+      ]
     },
     {
       "name": "clipboard-fallback",
       "source": "./clipboard-fallback",
-      "description": "Copy-to-clipboard that survives plain-HTTP origins — navigator.clipboard is secure-context-only (works on localhost, undefined on http://<lan-ip>), so LAN-served UIs need the isSecureContext gate plus the execCommand('copy') textarea fallback. Includes the localhost-testing trap and why paste has no fallback.",
-      "author": { "name": "Dirk Wahrheit" },
+      "description": "Copy-to-clipboard that survives plain-HTTP origins \u2014 navigator.clipboard is secure-context-only (works on localhost, undefined on http://<lan-ip>), so LAN-served UIs need the isSecureContext gate plus the execCommand('copy') textarea fallback. Includes the localhost-testing trap and why paste has no fallback.",
+      "author": {
+        "name": "Dirk Wahrheit"
+      },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
-      "keywords": ["clipboard", "webapp", "http", "secure-context", "frontend"]
+      "keywords": [
+        "clipboard",
+        "webapp",
+        "http",
+        "secure-context",
+        "frontend"
+      ]
     },
     {
       "name": "repo-scaffold",
       "source": "./repo-scaffold",
-      "description": "Repo scaffolding that pays rent — AGENTS.md imported by CLAUDE.md via @-syntax (a plain link doesn't load), .gitattributes eol=lf (the Windows-CI Delete-␍ fix), a format/ci-lint script pair with the read-only check in CI, a weekly actionable-only Trivy scan for container repos, tag-triggered publishing (npm OIDC / GHCR with tight dotted tag globs and prerelease-safe latest), the verified release-please adoption path (token-cascade dispatch, Actions-may-create-PRs setting), and label-categorized generated release notes.",
-      "author": { "name": "Dirk Wahrheit" },
+      "description": "Repo scaffolding that pays rent \u2014 AGENTS.md imported by CLAUDE.md via @-syntax (a plain link doesn't load), .gitattributes eol=lf (the Windows-CI Delete-\u240d fix), a format/ci-lint script pair with the read-only check in CI, a weekly actionable-only Trivy scan for container repos, tag-triggered publishing (npm OIDC / GHCR with tight dotted tag globs and prerelease-safe latest), the verified release-please adoption path (token-cascade dispatch, Actions-may-create-PRs setting), and label-categorized generated release notes.",
+      "author": {
+        "name": "Dirk Wahrheit"
+      },
       "repository": "https://github.com/sailingnaturali/claude-skills",
       "license": "MIT",
-      "keywords": ["scaffolding", "ci", "github-actions", "release", "lint", "trivy"]
+      "keywords": [
+        "scaffolding",
+        "ci",
+        "github-actions",
+        "release",
+        "lint",
+        "trivy"
+      ]
     }
   ]
 }

@@ -28,13 +28,16 @@ updates erase it), npm **OIDC trusted publishing** (including the new-package fi
 chicken-and-egg), and the Docker `node_modules` / `EBUSY` install gotcha.
 
 ### `signalk-container-helper`
-Building a SignalK plugin that runs a Docker/Podman container through the
+Building a SignalK plugin that reaches a service in a Docker/Podman container through the
 [signalk-container](https://github.com/dirkwa/signalk-container) manager, using the
 [`signalk-container-helper`](https://github.com/hoeken/signalk-container-helper) library. Packages the
 container lifecycle (wait for the manager, validate the tag, self-heal a drifted image, `ensureRunning`,
-wait for HTTP readiness, wire update routes, stop cleanly), the `ManagedContainer` vs `AdoptedContainer`
-split, and the shared React config-panel components — with the gotchas that cost the most time (the ESM
-Module-Federation remote, never throwing out of `start()`, "offline is a state not an error").
+wait for HTTP readiness, cancellable serialized operations, wire update routes, stop cleanly), the three
+shapes — `ManagedContainer`, `AdoptedContainer`, and the managed-vs-self-hosted `resolveEndpoint` switch
+— host path/device resolution, and the shared React config-panel components. With the gotchas that cost
+the most time: the ESM Module-Federation remote, never throwing out of `start()`, `signalkDataMount`
+being the *manager's* data dir rather than yours, `managed: undefined` meaning managed, and "offline is
+a state not an error".
 
 ### `signalk-registry`
 Check a SignalK plugin's expected [registry](https://signalk.org/signalk-plugin-registry/) score
