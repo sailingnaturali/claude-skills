@@ -8,7 +8,7 @@ marine-AI stack.
 
 ```
 /plugin marketplace add sailingnaturali/claude-skills
-/plugin install signalk-plugin@sailingnaturali     # or signalk-container-helper@…, signalk-e2e@…, coderabbit-cli@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
+/plugin install signalk-plugin@sailingnaturali     # or signalk-apis@…, signalk-container-helper@…, signalk-e2e@…, coderabbit-cli@…, signalk-registry@…, npm-oidc-publish@…, oss-branch-protection@…, debug-mcp-agent@…, record-web-gif@…
 ```
 
 ## Plugins
@@ -93,6 +93,17 @@ structured stream; `cr review findings` re-reads the last run for free). Plus th
 removal trap, verified: 0.7.x errors on it while older docs still show it. Requires a CodeRabbit
 account; the diff is **uploaded to CodeRabbit's cloud**. The full flag reference is deliberately
 deferred to CodeRabbit's own CLI docs.
+
+### `signalk-apis`
+Working with the [SignalK](https://signalk.org) server APIs as **consumer** (webapp, external
+app) or **provider** (server plugin) — starting from the misconception the docs never quite
+kill: **v2 is not the successor of v1**. v1 is the data-model API (full tree REST, WebSocket
+delta stream, PUT actuation); v2 is purpose-built domain APIs (course, resources,
+notifications, history, autopilot) that the server mounts and provider plugins implement.
+Carries the verified specifics: the discovery document advertises v1 only, a v2 404 can mean
+"no provider" rather than "no API" (the resources 404→200 flip), the history 501, the v1 PUT
+request envelope, `_default`/`_providers`/`_config` conventions, and why consumer data must
+never live behind admin-gated `/plugins/<id>/*` routes. Verified against signalk-server 2.30.0.
 
 ## Skill format policy
 
