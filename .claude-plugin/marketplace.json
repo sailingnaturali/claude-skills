@@ -25,7 +25,7 @@
     {
       "name": "signalk-plugin",
       "source": "./signalk-plugin",
-      "description": "Author and publish a SignalK server plugin \u2014 the @signalk/server-api patterns that work (resource provider vs router, deltas, position), the ESM scaffold, TypeBox config schemas (unscoped typebox 1.x for new ESM plugins), typechecking a Vite build (Vite transpiles without typechecking, so errors accumulate silently), the no-install-scripts rule (app store uses --ignore-scripts; containerize heavy parts), storage locations (config vs data dir vs applicationData \u2014 never node_modules), and OIDC trusted publishing.",
+      "description": "Author and publish a SignalK server plugin \u2014 the @signalk/server-api patterns that work (resource provider vs router, deltas, position), the ESM scaffold, TypeBox config schemas (unscoped typebox 1.x for new ESM plugins), typechecking a Vite build (Vite transpiles without typechecking, so errors accumulate silently), the app icon that 404s when a Vite root disables the default publicDir, the no-install-scripts rule (app store uses --ignore-scripts; containerize heavy parts), storage locations (config vs data dir vs applicationData \u2014 never node_modules), and OIDC trusted publishing.",
       "author": {
         "name": "Bryan Clark"
       },

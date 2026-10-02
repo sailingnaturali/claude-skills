@@ -24,7 +24,9 @@ a recommendation, and both emit the same JSON Schema),
 webapp view state in a **Zustand** store so it survives navigation, **typechecking the Vite
 build** (Vite transpiles without typechecking, so a strict `tsconfig` catches nothing at build
 time — `vite-plugin-checker` closes the gap; the server's own admin UI had 40 errors hidden
-this way), the **no-install-scripts rule** (app-store installs pass `--ignore-scripts`, npm 12 gates
+this way), the **app icon that
+404s** (`signalk.appIcon` and the webapp both read it from the served build output, and a Vite
+`root` moves the default `publicDir` to a directory that does not exist), the **no-install-scripts rule** (app-store installs pass `--ignore-scripts`, npm 12 gates
 dependency scripts, and a plugin can't whitelist itself — containerize heavy parts via the
 signalk-container manager instead), **where to store what** (server-owned config vs
 `getDataDirPath()` vs the applicationData API — and never inside `node_modules`, where

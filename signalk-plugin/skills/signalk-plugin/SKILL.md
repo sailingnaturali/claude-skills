@@ -1,6 +1,6 @@
 ---
 name: signalk-plugin
-description: Use when authoring and publishing a SignalK server plugin to npm — the @signalk/server-api patterns that actually work (resource provider vs router, deltas, vessel position), the ESM package scaffold, TypeBox config schemas (which package, and why), webapp state that survives navigation, typechecking a Vite build (Vite only transpiles, so type errors accumulate invisibly), the no-install-scripts rule (app-store installs pass --ignore-scripts and npm 12 gates dependency scripts — containerize heavy parts instead), and npm OIDC trusted publishing (including the new-package first-publish chicken-and-egg).
+description: Use when authoring and publishing a SignalK server plugin to npm — the @signalk/server-api patterns that actually work (resource provider vs router, deltas, vessel position), the ESM package scaffold, TypeBox config schemas (which package, and why), webapp state that survives navigation, typechecking a Vite build (Vite only transpiles, so type errors accumulate invisibly), the app icon that 404s because a Vite root disables the default publicDir, the no-install-scripts rule (app-store installs pass --ignore-scripts and npm 12 gates dependency scripts — containerize heavy parts instead), and npm OIDC trusted publishing (including the new-package first-publish chicken-and-egg).
 ---
 
 # Author & publish a SignalK plugin
@@ -207,7 +207,73 @@ files on a test run; it is not a substitute for the build-time gate.
 typescript 5.9.3. Verified against vite 8 / vite-plugin-checker 0.14.5, September 2026 — SignalK/signalk-server
 [#3068](https://github.com/SignalK/signalk-server/pull/3068).*
 
-## 6. Publish to npm
+## 6. The app icon: one file, two consumers
+
+`signalk.appIcon` in `package.json` is resolved against the plugin's **served root**, and the
+server picks that root by looking for a `public/` directory: `getInstalledServedRoot` in
+`src/appstore/local-assets.ts` returns `<pkg>/public` when that directory exists and falls
+back to `<pkg>` when it does not. So the moment a plugin ships a webapp, `appIcon:
+"./icon.svg"` means `public/icon.svg` — the same place the webapp's own
+`<link rel="icon">` fetches from. One file, one location, two consumers.
+
+Keeping the authored icon at the package root is still convenient (it is what a reader of the
+repo expects), but it is **not** what the server reads once `public/` exists, and it is not
+what the webapp asks for. Something has to put it in the build output.
+
+The trap is that **a Vite `root` kills the default `publicDir`**. Vite resolves `publicDir`
+relative to `root`, so the moment the config says `root: 'web'` the default becomes
+`web/public` — a directory that usually does not exist. Static assets are then silently copied
+from nowhere, and `<link rel="icon" href="/<plugin-id>/icon.svg">` **404s on every page load**
+in a real server. Everything functional still works, which is why this survives: the app's JS
+and CSS serve 200 and only the icon is missing.
+
+Point `publicDir` at a directory that holds the icon, and keep **one** file:
+
+```ts
+// vite.config.ts
+export default defineConfig({
+  root: 'web',
+  base: '/<plugin-id>/',
+  // The authored icon lives at the package root; both the server's appIcon
+  // lookup and the webapp's <link rel="icon"> read it from the build output.
+  // Copy it at build time rather than keeping a second copy in step by hand.
+  publicDir: '../static',
+  build: { outDir: '../public', emptyOutDir: false }
+})
+```
+
+`outDir` matters as much as `publicDir` here: both are resolved against `root`, so without it
+the build lands in `web/dist` and `public/` — the directory `files` ships and the server
+mounts — is never written. `emptyOutDir: false` is what lets `public/` also hold things the
+build does not generate; the cost is that a renamed or deleted asset lingers there until you
+remove it, so set it to `true` if the directory is purely build output.
+
+Create `static/icon.svg` as a symlink to the root `icon.svg`, so there is one real file. A
+second *copy* works too and is what several plugins do, but then the two drift the first time
+the icon is redrawn.
+
+**Ship the build output, not the symlink directory.** `files` lists the icon and the build
+output (`["dist", "public", "icon.svg", …]`) — `static/` stays out of the package, because
+`vite build` has already copied the real bytes into `public/`. Shipping the root copy too is
+harmless and keeps the repo layout honest; `public/icon.svg` is the one the server and the
+browser actually read. That distinction is what makes
+the symlink safe: npm 12 silently drops a symlinked file from a packed directory, so a
+package that shipped `static/` itself would publish without it and 404 exactly as before.
+
+This was checked on Vite 8.3, where `vite build` follows a file symlink in `publicDir` and
+copies the real bytes. The dev server has had its own history with symlinked static files, so
+if `npm run dev` serves the icon differently from the build, keep a real copy rather than
+debugging it. Verified on npm 12 against a
+plugin built this way: `vite build` writes the real 1052 bytes to
+`public/icon.svg` (not a link), and `npm pack` produces `package/icon.svg` and
+`package/public/icon.svg` as regular files. Check yours with `tar -tvf <tgz> | grep icon` —
+a link shows as `l`, a real file as `-`.
+
+Then install the tarball into a running server and fetch the icon path itself. A plugin that
+has never been installed from its tarball has never had this path exercised: everything
+functional serves 200, so nothing else tells you.
+
+## 7. Publish to npm
 
 Ship via **OIDC trusted publishing** so each GitHub release auto-publishes with no token/OTP.
 The full flow — the release-triggered `publish.yml`, the new-package first-publish
@@ -216,7 +282,7 @@ registry-propagation 404 gotcha — is in the **`npm-oidc-publish`** skill in th
 SignalK-specific bits: the `signalk-node-server-plugin` keyword is what surfaces the package
 in the app store, and ship `index.js`/`dist` via `"files"`.
 
-## 7. Install on a SignalK server
+## 8. Install on a SignalK server
 
 Install from the admin UI **Appstore** (search your plugin), or `npm install signalk-<name>`
 in the server's data dir (`~/.signalk`), then restart. Config persists under
@@ -226,7 +292,7 @@ and can't rename a mount point (`EBUSY`), which breaks *every* plugin install/up
 outside `node_modules` and link it with a `file:` dep, or just `npm install` it as a tracked
 dependency (anything extraneous gets pruned on the next reify).
 
-## 8. Install scripts never run — design for it
+## 9. Install scripts never run — design for it
 
 - **The app store installs plugins with `npm --save --ignore-scripts install`** (read from the
   released server's install path). Your plugin's `install`/`postinstall` — and those of every
@@ -249,7 +315,7 @@ dependency (anything extraneous gets pruned on the next reify).
   manager (the [`signalk-container-helper`](https://github.com/hoeken/signalk-container-helper)
   library packages the container lifecycle), and keep the npm plugin itself thin.
 
-## 9. Where to store what
+## 10. Where to store what
 
 Four distinct places, and picking the wrong one is a delayed-loss bug:
 
