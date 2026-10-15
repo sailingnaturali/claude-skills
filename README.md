@@ -148,7 +148,8 @@ standing Release PR; the GITHUB_TOKEN token-cascade fix via a dispatched publish
 ref; the default-off Actions-may-create-PRs setting; concurrency), **`changelog-type: github`
 for `by @author` contributor credit** (and why `include-commit-authors` is a no-op), dropping
 `CHANGELOG.md` with `skip-changelog`, the **releasable-commit gate** that stops a docs or ci
-merge proposing a release, and **generated release notes** categorized by PR label — no
+merge proposing a release (and the Dependabot prefixes it relies on), **betas** from the same
+release PR and why not on 0.x, and **generated release notes** categorized by PR label — no
 hand-written changelog.
 
 ## Skill format policy

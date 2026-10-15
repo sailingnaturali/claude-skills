@@ -156,6 +156,19 @@ plus a fourth that bites conditionally:
   branch has moved on. Keep the publish workflow's own Release job gated on push events so
   release-please's Release stays the only one.
 
+  Three things bite in the dispatched workflow itself:
+  - **A plain `needs:` on that Release job skips the publish.** On a dispatch the Release
+    job is skipped, and a skipped job skips every job that needs it, so the publish silently
+    never runs. Give the publish job a condition that checks the status itself:
+    `if: ${{ !cancelled() && needs.release.result != 'failure' }}`.
+  - **Check the tag against `package.json` first, in a job both others need.** npm publishes
+    `package.json`'s version whatever the tag is called, and neither a `v*` filter nor a
+    dispatch checks the name. Inside the publish job the check comes too late: a mismatched
+    hand-pushed tag has already got its Release.
+  - **npm trusted publishing is bound to the workflow file.** Keep publishing in the file the
+    trusted publisher names; moving it into the release-please workflow, or behind a reusable
+    workflow, gets the publish refused. That binding is why this is a dispatch at all.
+
   **Pass the action no inputs.** Give the step `uses:` and an `id:` and nothing else: setting
 `release-type:` on the action puts it in single-package mode, where it stops reading
 `release-please-config.json` and silently ignores everything configured there —
@@ -188,7 +201,13 @@ in the config file instead, which is where the rest of the settings already are.
   `gh api -X PUT repos/<owner>/<repo>/actions/permissions/workflow -F can_approve_pull_request_reviews=true`).
 - **Serialize with a `concurrency` group** (`cancel-in-progress: false`) — every default-branch
   push runs the workflow, and back-to-back merges race over the same Release PR (observed
-  immediately: three merges, three simultaneous runs).
+  immediately: three merges, three simultaneous runs). Once the gate below is in, put the
+  group on the **release-please job**, not the workflow. GitHub keeps one pending run per
+  group and replaces it with the newest, so at workflow level a docs push that lands while a
+  run is in progress replaces the queued run of the release PR's merge, the gate then stops
+  the docs run, and no tag is created until the next releasable push. A run the gate stopped
+  should get a group of its own:
+  `group: ${{ needs.gate.outputs.releasable == 'true' && 'release-please' || format('release-please-{0}', github.run_id) }}`.
 - **Permissions**: `contents: write` and `pull-requests: write` on the release-please job.
   Add `issues: write` if a run fails creating its `autorelease:*` labels — it reaches for the
   issues API to make them, so the need shows up on a repo where they don't exist yet rather
@@ -212,6 +231,7 @@ Two config lines change the output more than anything above:
   "release-type": "node",
   "changelog-type": "github",
   "skip-changelog": true,
+  "always-update": true,
   "pull-request-title-pattern": "chore: release ${version}",
   "packages": { ".": {} }
 }
@@ -236,10 +256,10 @@ the strategy source, not run here; a repo whose only release artifact is a git t
 to skip both and hand-cut tags, since `simple` still wants a file to bump.)
 
 No `versioning` key: the default derives the bump from the commit types, which is the
-behaviour you want. `always-bump-patch` exists for a repo whose convention is that every
-release is a PATCH — a plugin pinned to a host's version line, say — and it is a deliberate
-opt-out of semver, not a default worth copying. Set it only where that convention already
-holds, and say so in the repo.
+behaviour you want (betas are the exception, below). `always-bump-patch` exists for a repo
+whose convention is that every release is a PATCH — a plugin pinned to a host's version
+line, say — and it is a deliberate opt-out of semver, not a default worth copying. Set it
+only where that convention already holds, and say so in the repo.
 
 - **`changelog-type: github`** hands note generation to GitHub's own API, which is what
   produces the **`by @author`** credit lines. Beware `include-commit-authors`: it looks like
@@ -255,6 +275,25 @@ holds, and say so in the repo.
 - **`skip-changelog: true`** keeps no `CHANGELOG.md` at all — the Releases page is the
   changelog. Worth it beyond taste: the generated file trips Prettier, and CI does not run on
   the release PR, so nothing surfaces the failure.
+- **`always-update: true`** rebuilds the release PR from the default branch on every run.
+  Without it, release-please leaves an open release PR alone whenever its title and notes
+  would come out the same. If the default branch moves underneath in a way the notes don't
+  show, such as a version bumped by hand, the PR goes conflicting and stays that way (seen
+  October 2026).
+
+#### Betas from the same release PR, but not on 0.x
+
+Default versioning keeps a pre-release suffix when it bumps: from `1.3.3-beta.2`, a `fix`
+proposes `1.3.4-beta.2`. To cut betas through release-please, set `"versioning": "prerelease"`
+and `"prerelease": true`, with no `prerelease-type`. A stable version then bumps to the next
+stable (`1.3.2` plus a `fix` gives `1.3.3`) and a beta to the next beta (`1.3.3-beta.2` plus a
+`fix` gives `1.3.3-beta.3`). A `Release-As:` footer switches between the two, and
+`prerelease: true` is what marks the betas as GitHub pre-releases.
+
+It also marks **every 0.x release** as one. release-please sets the flag to `prerelease &&
+(the version has a suffix || major === 0)`, so a 0.x package never gets a release marked
+Latest. Leave both keys out until 1.0. (Read from release-please 17.11.2's versioning
+strategies and `manifest.js`, October 2026.)
 
 #### Gate the run, or every docs merge proposes a release
 
@@ -293,12 +332,33 @@ release-please:
   if: ${{ needs.gate.outputs.releasable == 'true' }}
 ```
 
-This reads the **subject line** of each pushed commit, which assumes the repo **squash-merges**
-pull requests so the PR title becomes the subject. On a repo that uses true merge commits the
-subject is `Merge pull request #N from …` and the conventional-commit title sits on a later
-line, so every push — the release PR's own merge included — judges non-releasable and no
-release ever happens. Either require squash merges (Settings → General → Pull Requests), or
-test the whole message instead of `split("\n")[0]`.
+This reads the **subject line** of each pushed commit. With squash merges that subject is the
+PR title. With true merge commits it works too, on different subjects: the push payload holds
+the PR's own commits beside the `Merge pull request #N from …` commit, so their subjects are
+what gets judged, and the release PR's own release commit lets its merge through (checked
+October 2026 on a merge-commit repo: two release PR merges, each of which passed the gate,
+was tagged and was published). On such a repo the conventional type has to be on the
+commits, not only on the PR title.
+
+**`build(deps):` only appears if Dependabot is told to write it.** Its default prefix follows
+the repo's history and is often `chore(deps)`, which the gate never lets through, so a runtime
+security bump merges without a release. Set the prefixes in `dependabot.yml`:
+
+```yaml
+- package-ecosystem: npm
+  commit-message:
+    prefix: build # runtime: build(deps)
+    prefix-development: build # dev: build(deps-dev)
+    include: scope
+- package-ecosystem: github-actions
+  commit-message:
+    prefix: ci # ci(deps)
+    include: scope
+```
+
+The PR labeler needs the same split: a `build(deps)` PR is what causes its release, so it must
+not get `skip-changelog`. Leave it to the `dependencies` label Dependabot sets, and it lands
+under 📦 Dependencies.
 
 **The footer tests are not decoration.** A `BREAKING CHANGE:` or `Release-As:` footer is
 usually written on a commit whose *subject* is not releasable — the off-policy bump below is
@@ -370,4 +430,9 @@ in that run, not copied from documentation. The `changelog-type: github` contrib
 `include-commit-authors` re-confirmed a no-op against release-please#2892, still open. The
 `Release-As` gate gap, the `skip-changelog` label prerequisite and the `split()` expression
 error all surfaced adopting this on a sixth repo (2026-09-23); `split()` confirmed undefined by
-actionlint 1.7.12, which is where the function list above comes from.*
+actionlint 1.7.12, which is where the function list above comes from. The job-level
+concurrency group, the dispatched publish job's `needs:` trap and tag check, the
+merge-commit behaviour of the gate, `always-update` and the Dependabot prefixes come from
+later adoptions on npm plugin repos (September–October 2026); the merge-commit claim was
+checked against two release PR merges' runs, and the beta versioning and the 0.x
+pre-release flag were read from release-please 17.11.2's source (2026-10-15).*
