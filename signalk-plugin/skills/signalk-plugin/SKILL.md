@@ -1,6 +1,6 @@
 ---
 name: signalk-plugin
-description: Use when authoring and publishing a SignalK server plugin to npm — the @signalk/server-api patterns that actually work (resource provider vs router, deltas, vessel position), the ESM package scaffold, TypeBox config schemas (which package, and why), webapp state that survives navigation, typechecking a Vite build (Vite only transpiles, so type errors accumulate invisibly), the app icon that 404s because a Vite root disables the default publicDir, the no-install-scripts rule (app-store installs pass --ignore-scripts and npm 12 gates dependency scripts — containerize heavy parts instead), plugin-to-plugin coordination through PropertyValues, and npm OIDC trusted publishing (including the new-package first-publish chicken-and-egg).
+description: Use when authoring and publishing a SignalK server plugin to npm — the @signalk/server-api patterns that actually work (resource provider vs router, deltas, vessel position), the ESM package scaffold, TypeBox config schemas (which package, and why), webapp state that survives navigation, typechecking a Vite build (Vite only transpiles, so type errors accumulate invisibly), the app icon that 404s because a Vite root disables the default publicDir, the no-install-scripts rule (app-store installs pass --ignore-scripts and npm 12 gates dependency scripts — containerize heavy parts instead), plugin-to-plugin coordination through PropertyValues, metadata for the paths a plugin publishes (units, description, display category, event vs periodic and timeout, so data-timeout enforcement doesn't blank them), and npm OIDC trusted publishing (including the new-package first-publish chicken-and-egg).
 ---
 
 # Author & publish a SignalK plugin
@@ -50,7 +50,7 @@ makes relative imports require explicit `.js` extensions (`./helpers.js`, even i
 ## 3. The @signalk/server-api patterns that actually work
 
 - **Serve plugin data via `app.registerResourceProvider({ type, methods: { listResources, getResource, setResource, deleteResource } })`** — it's served at `/signalk/v2/api/resources/<type>` and is **anonymously readable** under the server's `allow_readonly`. **Do NOT serve data with `registerWithRouter`** — `/plugins/<id>/*` routes are **admin-gated**, so every consumer would need an admin token. This is the single biggest gotcha.
-- Publish a value: `app.handleMessage(plugin.id, { updates: [{ values: [{ path: '<path>' as Path, value }] }] })`.
+- Publish a value: `app.handleMessage(plugin.id, { updates: [{ values: [{ path: '<path>' as Path, value }] }] })`. For a path outside the spec, also set its metadata (section 12).
 - Read the vessel position: `app.getSelfPath('navigation.position.value') as Position | undefined` (note the `.value` suffix).
 - Do periodic work in `setInterval`, and wrap each cycle — and each independent step inside it — in `try/catch` → `app.error(...)`, so one failing fetch can't blank everything else or kill the loop.
 - **Avoid an `express` runtime dependency**: register routes on the `IRouter` the server hands you via `registerWithRouter`, or use the resource API; keep `@types/express` dev-only via `import type` (erased at build).
@@ -418,6 +418,87 @@ unsubscribe = undefined
 *History, the `[undefined]` first call, unsubscribe and the server-wide 1000-value cap
 verified against `@signalk/server-api` 2.35.0, October 2026; the per-plugin `app` copy against
 signalk-server 2.35.1 `src/interfaces/plugins.ts`.*
+
+## 12. Metadata for the paths you publish
+
+A path that is not in the Signal K specification arrives with no metadata: no unit, no
+description, no idea whether silence means "lost" or "unchanged". Other apps can't build on
+it, and once the server enforces data timeouts it may blank the value. Give every path you
+publish outside the spec — and a spec path whose defaults are wrong for your data — its
+metadata with `app.setDefaultMetadata(path, meta)` in `start()`:
+
+- **`units`** (SI: `m`, `s`, `K`, `rad`, `m/s`, `ratio`, …) and **`description`**, so clients
+  can convert and label the value and other plugin authors know what it is.
+- **`displayUnits: { category }`** when the unit alone picks the wrong display category.
+  Without a category the server picks one from the unit, and for `m` that is distance: tide
+  heights then show in nautical miles in the nautical presets (a 0.5 m tide reads
+  "0.0 nmi"). A water level belongs in `depth`.
+- **How staleness should treat it** — only matters for numbers and objects; string and
+  boolean values are never timed out:
+  - `updateContract: 'event'` for a value you send only when it changes (a state, a
+    setting, a computed result that stays put). Silence then means "unchanged", never stale.
+  - `updateContract: 'periodic'` for a value you send on a schedule. That is the default, so
+    you can usually leave it out — but the server treats some prefixes as event data
+    (`navigation.anchor`, `navigation.course`, `navigation.home`, `design`,
+    `communication`, …): a periodic value there is never timed out, even with a
+    `timeout`, unless you say so.
+  - a periodic path's **`timeout`**, in seconds: a few times your publish interval, or `0`
+    to exempt it. Without one the spec's timeout applies, else the server's default, 60 s
+    out of the box — a value published every 60 s then can time out just before each
+    update.
+  - `timeout: 'auto'` lets the server learn the rate, but during its warm-up (up to 30 s,
+    and at least two updates) it uses the server's default, and it never learns more than 300 s.
+    For a value sent less often than once a minute, give a number instead.
+
+```ts
+import type { MetaValue } from '@signalk/server-api'
+
+const PATH_META: Record<string, MetaValue> = {
+  'environment.tide.timeToNextExtreme': {
+    units: 's',
+    description: 'Seconds until the next tide extreme (high or low water)',
+    timeout: 180 // published every 60 s
+  },
+  // a spec path: unit and description come from the spec, the category does not
+  'environment.tide.heightNow': {
+    displayUnits: { category: 'depth' } as MetaValue['displayUnits']
+  }
+}
+
+// in start(), not awaited: it writes a file, and nothing else depends on it
+void (async () => {
+  if (typeof app.setDefaultMetadata !== 'function') return // server < 2.30
+  for (const [path, meta] of Object.entries(PATH_META)) {
+    try {
+      await app.setDefaultMetadata(path, meta)
+    } catch (error) {
+      app.error(`Could not set metadata for ${path}: ${String(error)}`)
+    }
+  }
+})()
+```
+
+- **Not a `meta` entry in your deltas.** `handleMessage` with `updates: [{ meta: [...] }]`
+  reaches clients, but the timeout enforcer never reads it: it looks only at stored metadata
+  (what the user set in the Data Browser, and `setDefaultMetadata`) and at the spec's own
+  timeouts. A meta delta is also gone after a restart until you send it again.
+- **The user wins, per field.** `setDefaultMetadata` stores only fields the path does not
+  have yet and never overwrites them, so a user's own `timeout` or display unit survives
+  your plugin. The flip side: a value you change in a later release does not reach a server
+  that already stored the old one.
+- **A rejected category drops the whole call.** `displayUnits.category` is checked against
+  the path's SI unit (from your `units`, the stored meta or the spec). On a mismatch nothing
+  is stored — not the `description` or `timeout` in the same call either — and the reason
+  goes only to the server's debug log. The method returns `false`, as it also does when every
+  field already exists.
+- **`MetaValue` types `displayUnits` as the server resolves it** (target unit, formulas,
+  symbol). A suggestion needs only the category, hence the cast in the example.
+
+*`setDefaultMetadata` (server 2.30.0+) and the timeout enforcer (2.31.0+, off unless the user
+enables Enforce Data Timeouts, applied to `vessels.self` only) verified against
+signalk-server 2.35.1 `src/interfaces/plugins.ts`, `src/staleness.ts` and
+`src/unitpreferences/resolver.ts`, October 2026. The tide-height category from
+[openwatersio/signalk-tides#179](https://github.com/openwatersio/signalk-tides/pull/179).*
 
 ## Testing
 

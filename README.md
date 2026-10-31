@@ -32,7 +32,9 @@ signalk-container manager instead), **where to store what** (server-owned config
 `getDataDirPath()` vs the applicationData API — and never inside `node_modules`, where
 updates erase it — plus a `CACHEDIR.TAG` on cache directories so backups skip them),
 **plugin-to-plugin coordination** through the server's PropertyValues (emit on changes only:
-the history is never trimmed and the cap is server-wide), npm
+the history is never trimmed and the cap is server-wide), **metadata for the paths a plugin
+publishes** (units, display category, and whether silence means lost or unchanged, set with
+`setDefaultMetadata` so data-timeout enforcement doesn't blank them), npm
 **OIDC trusted publishing** (including the new-package first-publish chicken-and-egg), and the Docker `node_modules` / `EBUSY` install gotcha.
 
 ### `signalk-container-helper`
