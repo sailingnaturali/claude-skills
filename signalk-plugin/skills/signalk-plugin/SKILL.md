@@ -23,9 +23,12 @@ TS `src/` built with `tsc`), `package.json`, `LICENSE`, `README.md`, `.gitignore
   "type": "module",
   "files": ["index.js"],
   "keywords": ["signalk-node-server-plugin", "signalk-category-utility"],
+  "engines": { "node": ">=24" },
   "license": "MIT"
 }
 ```
+`engines` states the Node versions you test on: test on Node 24 and 26 and declare `>=24` (the
+plugin-CI setup is in the `signalk-registry` skill, Check 4).
 For a scoped package add `"publishConfig": { "access": "public" }`. For TypeScript use
 `"files": ["dist"]`, point `"main": "dist/index.js"` (and `"types": "dist/index.d.ts"`) at the
 build output — without `main` the server resolves a nonexistent root `index.js` — and add

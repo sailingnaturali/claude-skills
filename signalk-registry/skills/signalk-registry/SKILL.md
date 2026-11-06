@@ -142,7 +142,14 @@ concurrency:
 jobs:
   plugin-ci:
     uses: SignalK/signalk-server/.github/workflows/plugin-ci.yml@<release-sha> # vX.Y.Z
+    with:
+      node-versions: '["24", "26"]'
 ```
+
+**Test on Node 24 and 26, and declare `"engines": { "node": ">=24" }` in `package.json` to
+match.** The reusable workflow's `node-versions` default is `["22", "24", "26"]` from
+signalk-server v2.36.0 on (`["22", "24"]` before), so leaving it out still spends a third of the
+matrix on Node 22. `build-node-version` (default `24`) needs no change.
 
 **Pin to a release commit SHA, never `@master`** (supply-chain safety + reproducibility), with the
 version in a trailing comment. Prereqs for green CI: a committed `package-lock.json` (the workflow
@@ -181,6 +188,9 @@ sha=$(printf '%s' "$obj" | python3 -c "import sys,json;o=json.load(sys.stdin);pr
 echo "latest signalk-server release: $tag ($sha)"
 echo "our pin: $ref"
 [ "$ref" = "$sha" ] && echo "pin is current" || echo "pin is BEHIND — update to $tag ($sha)"
+# Node matrix and engines: expect node-versions ["24", "26"] and engines.node >=24
+grep -nE 'node-versions:' .github/workflows/plugin-ci.yml || echo "no node-versions — the default still tests Node 22"
+node -p "require('./package.json').engines?.node ?? 'no engines.node'"
 ```
 
 **Fix when behind:** bump the `@<sha> # vX.Y.Z` to the latest release's SHA and comment. Only move
