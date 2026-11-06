@@ -1,11 +1,11 @@
 ---
 name: repo-scaffold
-description: Use when creating a repository or upgrading its scaffolding — agent context files, line-ending normalization, format/lint CI, container CVE scanning, tag-triggered publishing, release automation, and generated release notes. Encodes the working set from maintained repos, CLAUDE.md importing AGENTS.md via the @-syntax (a plain link does not load), .gitattributes eol=lf (the Windows-CI "Delete ␍" fix), prettier+eslint as a read-only CI gate, a weekly Trivy scan of the published image (no severity filter: the action ignores it for SARIF) with an apt-get upgrade at build so a release fixes what it finds, tag globs as a coarse filter backed by a mandatory in-job semver check, prerelease-safe latest, the verified release-please adoption path (token-cascade dispatch, the Actions-may-create-PRs setting, concurrency, issues-write), and label-categorized release notes.
+description: Use when creating a repository or upgrading its scaffolding — agent context files, line-ending normalization, format/lint CI, container CVE scanning, tag-triggered publishing, release automation, and generated release notes. Encodes the working set from maintained repos, CLAUDE.md importing AGENTS.md via the @-syntax (a plain link does not load), .gitattributes eol=lf (the Windows-CI "Delete ␍" fix), prettier+eslint as a read-only CI gate, a weekly Trivy scan of the published image (no severity filter: the action ignores it for SARIF) with an apt-get upgrade at build so a release fixes what it finds, tag globs as a coarse filter backed by a mandatory in-job semver check, prerelease-safe latest, the verified release-please adoption path (token-cascade dispatch, the Actions-may-create-PRs setting, concurrency, issues-write), label-categorized release notes, and a code-explains-itself rule in AGENTS.md with CodeRabbit's docstring check and docstring generation turned off.
 ---
 
 # Repo scaffolding that pays rent
 
-Six pieces of scaffolding, each of which has already paid for itself in a maintained repo.
+Seven pieces of scaffolding, each of which has already paid for itself in a maintained repo.
 Copy the shapes; the rationale is what keeps them from being cargo cult.
 
 ## 1. Agent context: `AGENTS.md`, imported by `CLAUDE.md`
@@ -23,6 +23,17 @@ session start. A plain markdown link (`See [AGENTS.md](AGENTS.md).`) is *not* fo
 automatically — observed side by side in two live repos: the `@`-import version loaded the
 full conventions, the link version loaded only the one-line stub. If your conventions aren't
 reaching the agent, check which form the repo uses.
+
+Give it a **code style rule that keeps agents from padding the code**, because by default an
+agent tends to add a docstring to every function and a comment to every block:
+
+```markdown
+## Code style
+
+- **Code explains itself.** Names and small functions carry the meaning;
+  a comment says why, never what, and only where the code cannot. No
+  docstrings for their own sake, no long or echo comments.
+```
 
 ## 2. `.gitattributes`: one line ends a whole failure class
 
@@ -476,6 +487,35 @@ nothing simply excludes nothing.
 ```bash
 gh label create skip-changelog --color ededed --description "Left out of the release notes"
 ```
+
+## 7. CodeRabbit: don't let it ask for docstrings
+
+CodeRabbit runs a **docstring coverage check** by default (`warning`, 80 % threshold) and offers
+to generate docstrings for every function a PR touches. In a repo whose rule is "code explains
+itself", that produces a finding on every PR, and following it buries the code under comments
+that repeat the signature. Turn both off in `.coderabbit.yaml` and tell the reviewer what to
+flag instead:
+
+```yaml
+reviews:
+  # Code explains itself; comments say why, not what. Docstrings on every
+  # function would be the echo comments AGENTS.md rules out.
+  pre_merge_checks:
+    docstrings:
+      mode: 'off'
+  finishing_touches:
+    docstrings:
+      enabled: false
+  path_instructions:
+    - path: '**/*'
+      instructions: |
+        Flag echo comments that restate the code. Don't ask for docstrings
+        or for comments on code whose names already say what it does.
+```
+
+`mode` takes `off`, `warning` or `error`. Quote `'off'`, because unquoted it is the YAML 1.1
+boolean `false`, not the string the schema expects. Keep the reason in AGENTS.md (section 1)
+as well, so agents writing the code and the reviewer judging it follow the same rule.
 
 ---
 

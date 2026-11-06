@@ -156,7 +156,8 @@ for `by @author` contributor credit** (and why `include-commit-authors` is a no-
 `CHANGELOG.md` with `skip-changelog`, the **releasable-commit gate** that stops a docs or ci
 merge proposing a release (and the Dependabot prefixes it relies on), **betas** from the same
 release PR and why not on 0.x, and **generated release notes** categorized by PR label — no
-hand-written changelog.
+hand-written changelog — and a **code-explains-itself** rule in `AGENTS.md`, with CodeRabbit's
+docstring coverage check and docstring generation turned off.
 
 ### `signalk-wasm`
 WebAssembly in [SignalK](https://signalk.org) — two co-installed skills, starting from the
