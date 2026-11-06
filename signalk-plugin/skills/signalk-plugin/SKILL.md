@@ -1,6 +1,6 @@
 ---
 name: signalk-plugin
-description: Use when authoring and publishing a SignalK server plugin to npm — the @signalk/server-api patterns that actually work (resource provider vs router, deltas, vessel position), the ESM package scaffold, TypeBox config schemas (which package, and why), webapp state that survives navigation, typechecking a Vite build (Vite only transpiles, so type errors accumulate invisibly), the app icon that 404s because a Vite root disables the default publicDir, the no-install-scripts rule (app-store installs pass --ignore-scripts and npm 12 gates dependency scripts — containerize heavy parts instead), plugin-to-plugin coordination through PropertyValues, metadata for the paths a plugin publishes (units, description, display category, event vs periodic and timeout, so data-timeout enforcement doesn't blank them), and npm OIDC trusted publishing (including the new-package first-publish chicken-and-egg).
+description: Use when authoring and publishing a SignalK server plugin to npm — the @signalk/server-api patterns that actually work (resource provider vs router, deltas, vessel position), the ESM package scaffold, TypeBox config schemas (which package, and why), webapp state that survives navigation, typechecking a Vite build (Vite only transpiles, so type errors accumulate invisibly), the app icon that 404s because a Vite root disables the default publicDir, the no-install-scripts rule (app-store installs pass --ignore-scripts and npm 12 gates dependency scripts — containerize heavy parts instead), plugin-to-plugin coordination through PropertyValues, metadata for the paths a plugin publishes (units, description, display category, event vs periodic and timeout, so data-timeout enforcement doesn't blank them), moving heavy or synchronous work to a worker thread so it doesn't stall the server's event loop, and npm OIDC trusted publishing (including the new-package first-publish chicken-and-egg).
 ---
 
 # Author & publish a SignalK plugin
@@ -502,6 +502,86 @@ enables Enforce Data Timeouts, applied to `vessels.self` only) verified against
 signalk-server 2.35.1 `src/interfaces/plugins.ts`, `src/staleness.ts` and
 `src/unitpreferences/resolver.ts`, October 2026. The tide-height category from
 [openwatersio/signalk-tides#179](https://github.com/openwatersio/signalk-tides/pull/179).*
+
+## 13. Heavy work goes to a worker thread
+
+The server runs every plugin in **one Node process on one event loop**. That same loop moves
+every delta to every WebSocket client, answers REST calls and runs the other plugins. A
+plugin that computes for 300 ms without yielding stalls all of that for 300 ms, and on a
+Raspberry Pi the same job takes several times longer than on your laptop. Async I/O
+(`fs.promises`, `fetch`, sockets) is not the problem, because it already runs off the loop.
+**Synchronous work is the problem**, so move it to a
+[`node:worker_threads`](https://nodejs.org/api/worker_threads.html) worker when:
+
+- one call can take more than a few tens of milliseconds on a Pi, or it grows with the data:
+  parsing or converting large files (GPX, charts, tiles), compression, image work, geometry
+  over thousands of features, a batch backfill;
+- you use a **synchronous database driver** such as `node:sqlite`. A query over a big table
+  blocks for as long as it runs;
+- the job holds a lot of memory while it runs. The worker has its own heap, which you can cap.
+
+A small per-delta calculation (a CPA for a few dozen targets, a unit conversion) stays on the
+main thread. A worker costs its own V8 heap (about 15 MB of RSS idle, Node 22 on x64) and a
+message round trip per job, so it only pays off for real work.
+
+```ts
+// src/index.ts (main thread)
+import { Worker } from 'node:worker_threads'
+
+let worker: Worker | undefined
+
+start(config) {
+  const w = new Worker(new URL('./worker.js', import.meta.url), {
+    workerData: { dataDir: app.getDataDirPath(), config },   // plain data only
+    resourceLimits: { maxOldGenerationSizeMb: 256 },         // a runaway job can't take the Pi down
+  })
+  worker = w
+  w.on('message', (msg) => { /* results: publish them here with app.handleMessage */ })
+  w.on('error', (err) => app.setPluginError(err.message))
+  // terminate() exits with code 1 too, so only an exit that stop() didn't ask for is an error
+  w.on('exit', (code) => { if (worker === w) app.setPluginError(`worker exited (${code})`) })
+},
+async stop() {
+  const w = worker
+  worker = undefined
+  await w?.terminate()
+},
+```
+
+```ts
+// src/worker.ts
+import { parentPort, workerData } from 'node:worker_threads'
+parentPort!.on('message', (job) => {
+  const result = heavyComputation(job, workerData.config)
+  parentPort!.postMessage(result)
+})
+```
+
+- **The worker has no `app`.** Functions, sockets and the server's objects do not cross the
+  thread boundary, only data that structured clone can copy. Do all `app.*` calls on the main
+  thread, including `handleMessage`, `setPluginStatus` and logging. Send log lines back as
+  messages and pass them to `app.debug`.
+- **Build the worker as its own file and publish it.** Add it as a second entry next to
+  `index` (Vite `build.lib.entry: { index: …, worker: … }` with ``fileName: (_, name) =>
+  `${name}.js` ``, or emit both files with `tsc`). Resolve it with `new URL('./worker.js',
+  import.meta.url)` relative to the built `index.js`, never relative to `process.cwd()`, which
+  is the server's directory. Make sure `files` in `package.json` covers it. A worker that's
+  missing from the tarball fails only at `start()`.
+- **Transfer big results, don't copy them.** `postMessage` copies with structured clone,
+  which for a large array of objects costs main-thread time again. Pack the result into typed
+  arrays and pass their buffers in the transfer list (`postMessage(msg, [a.buffer, b.buffer])`),
+  so it arrives without a copy. In [SignalK/tracks](https://github.com/SignalK/tracks), packing
+  a 250 000-point read into `Float64Array` columns cut it from ~700 to ~380 ms and the main
+  heap peak from +56 to +33 MB.
+- **Bound the queue.** If jobs arrive faster than the worker finishes them, messages pile up
+  on the main heap. Cap the pending jobs (or their bytes), and drop or merge jobs past the cap
+  instead of letting memory grow.
+- **Tie the worker to the plugin lifecycle.** Create it in `start()`, `await terminate()` it in
+  `stop()`. The server calls `stop()` and `start()` again on every config save, so a worker
+  left running keeps a second copy (and a second open database) alive. Report `error` and an
+  unexpected `exit` with `app.setPluginError`, or the plugin looks healthy while it does nothing.
+- **Too heavy even for a worker** (a native toolchain, a GPU, a long-running service)? Use a
+  container instead, see section 9.
 
 ## Testing
 
