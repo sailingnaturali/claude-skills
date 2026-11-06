@@ -518,7 +518,8 @@ Raspberry Pi the same job takes several times longer than on your laptop. Async 
   over thousands of features, a batch backfill;
 - you use a **synchronous database driver** such as `node:sqlite`. A query over a big table
   blocks for as long as it runs;
-- the job holds a lot of memory while it runs. The worker has its own heap, which you can cap.
+- the job builds large JavaScript objects while it runs. The worker has its own V8 heap, which
+  you can cap.
 
 A small per-delta calculation (a CPA for a few dozen targets, a unit conversion) stays on the
 main thread. A worker costs its own V8 heap (about 15 MB of RSS idle, Node 22 on x64) and a
@@ -533,7 +534,7 @@ let worker: Worker | undefined
 start(config) {
   const w = new Worker(new URL('./worker.js', import.meta.url), {
     workerData: { dataDir: app.getDataDirPath(), config },   // plain data only
-    resourceLimits: { maxOldGenerationSizeMb: 256 },         // a runaway job can't take the Pi down
+    resourceLimits: { maxOldGenerationSizeMb: 256 },         // caps the worker's JS heap only
   })
   worker = w
   w.on('message', (msg) => { /* results: publish them here with app.handleMessage */ })
@@ -562,8 +563,10 @@ parentPort!.on('message', (job) => {
   thread, including `handleMessage`, `setPluginStatus` and logging. Send log lines back as
   messages and pass them to `app.debug`.
 - **Build the worker as its own file and publish it.** Add it as a second entry next to
-  `index` (Vite `build.lib.entry: { index: …, worker: … }` with ``fileName: (_, name) =>
-  `${name}.js` ``, or emit both files with `tsc`). Resolve it with `new URL('./worker.js',
+  `index` (Vite `build.lib.entry: { index: …, worker: … }` with `formats: ['es']` and
+  ``fileName: (_, name) => `${name}.js` ``, or emit both files with `tsc`). Vite builds a
+  multi-entry library as both ES and CJS unless you set `formats`, and with that `fileName`
+  both outputs get the same name. Resolve it with `new URL('./worker.js',
   import.meta.url)` relative to the built `index.js`, never relative to `process.cwd()`, which
   is the server's directory. Make sure `files` in `package.json` covers it. A worker that's
   missing from the tarball fails only at `start()`.
@@ -573,6 +576,11 @@ parentPort!.on('message', (job) => {
   so it arrives without a copy. In [SignalK/tracks](https://github.com/SignalK/tracks), packing
   a 250 000-point read into `Float64Array` columns cut it from ~700 to ~380 ms and the main
   heap peak from +56 to +33 MB.
+- **`resourceLimits` is not a memory sandbox.** `maxOldGenerationSizeMb` caps the worker's
+  V8 old-generation heap, which ends the worker when a job builds too many objects.
+  `ArrayBuffer`s, `Buffer`s and native memory (the SQLite page cache, image libraries) sit
+  outside that heap and count against the whole server process. Bound how big a job and its
+  result may get too (file size, row count, `LIMIT` on queries).
 - **Bound the queue.** If jobs arrive faster than the worker finishes them, messages pile up
   on the main heap. Cap the pending jobs (or their bytes), and drop or merge jobs past the cap
   instead of letting memory grow.
