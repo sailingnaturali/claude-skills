@@ -36,7 +36,9 @@ the history is never trimmed and the cap is server-wide), **metadata for the pat
 publishes** (units, display category, and whether silence means lost or unchanged, set with
 `setDefaultMetadata` so data-timeout enforcement doesn't blank them), **heavy or synchronous
 work in a worker thread** so it doesn't stall the event loop every plugin shares, **routes for readonly and readwrite
-users**, not just admins, with a webapp that greys out what the user can't do, npm
+users**, not just admins, with a webapp that greys out what the user can't do, **plugins that work on
+install** (enabled-by-default, schema defaults merged in `start()`) with **touch-first** webapps
+and config forms, npm
 **OIDC trusted publishing** (including the new-package first-publish chicken-and-egg), and the Docker `node_modules` / `EBUSY` install gotcha.
 
 ### `signalk-container-helper`
