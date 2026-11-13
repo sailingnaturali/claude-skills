@@ -1,6 +1,6 @@
 ---
 name: signalk-plugin
-description: Use when authoring and publishing a SignalK server plugin to npm — the @signalk/server-api patterns that actually work (resource provider vs router, deltas, vessel position), the ESM package scaffold, TypeBox config schemas (which package, and why), webapp state that survives navigation, typechecking a Vite build (Vite only transpiles, so type errors accumulate invisibly), the app icon that 404s because a Vite root disables the default publicDir, the no-install-scripts rule (app-store installs pass --ignore-scripts and npm 12 gates dependency scripts — containerize heavy parts instead), plugin-to-plugin coordination through PropertyValues, metadata for the paths a plugin publishes (units, description, display category, event vs periodic and timeout, so data-timeout enforcement doesn't blank them), moving heavy or synchronous work to a worker thread so it doesn't stall the server's event loop, and npm OIDC trusted publishing (including the new-package first-publish chicken-and-egg).
+description: Use when authoring and publishing a SignalK server plugin to npm — the @signalk/server-api patterns that actually work (resource provider vs router, deltas, vessel position), the ESM package scaffold, TypeBox config schemas (which package, and why), webapp state that survives navigation, typechecking a Vite build (Vite only transpiles, so type errors accumulate invisibly), the app icon that 404s because a Vite root disables the default publicDir, the no-install-scripts rule (app-store installs pass --ignore-scripts and npm 12 gates dependency scripts — containerize heavy parts instead), plugin-to-plugin coordination through PropertyValues, metadata for the paths a plugin publishes (units, description, display category, event vs periodic and timeout, so data-timeout enforcement doesn't blank them), moving heavy or synchronous work to a worker thread so it doesn't stall the server's event loop, opening routes to readonly and readwrite users instead of admins only (router.access, a webapp that greys out what the user can't do), and npm OIDC trusted publishing (including the new-package first-publish chicken-and-egg).
 ---
 
 # Author & publish a SignalK plugin
@@ -52,7 +52,7 @@ makes relative imports require explicit `.js` extensions (`./helpers.js`, even i
 
 ## 3. The @signalk/server-api patterns that actually work
 
-- **Serve plugin data via `app.registerResourceProvider({ type, methods: { listResources, getResource, setResource, deleteResource } })`** — it's served at `/signalk/v2/api/resources/<type>` and is **anonymously readable** under the server's `allow_readonly`. **Do NOT serve data with `registerWithRouter`** — `/plugins/<id>/*` routes are **admin-gated**, so every consumer would need an admin token. This is the single biggest gotcha.
+- **Serve plugin data via `app.registerResourceProvider({ type, methods: { listResources, getResource, setResource, deleteResource } })`** — it's served at `/signalk/v2/api/resources/<type>` and is **anonymously readable** under the server's `allow_readonly`. Use it for data other apps consume. `registerWithRouter` routes under `/plugins/<id>/*` are **admin-only unless you open them** with `router.access()` (server 2.31.0+, section 14), and a plugin that registers them all directly locks every non-admin out of its own webapp. This is the single biggest gotcha.
 - Publish a value: `app.handleMessage(plugin.id, { updates: [{ values: [{ path: '<path>' as Path, value }] }] })`. For a path outside the spec, also set its metadata (section 12).
 - Read the vessel position: `app.getSelfPath('navigation.position.value') as Position | undefined` (note the `.value` suffix).
 - Do periodic work in `setInterval`, and wrap each cycle — and each independent step inside it — in `try/catch` → `app.error(...)`, so one failing fetch can't blank everything else or kill the loop.
@@ -590,6 +590,76 @@ parentPort!.on('message', (job) => {
   unexpected `exit` with `app.setPluginError`, or the plugin looks healthy while it does nothing.
 - **Too heavy even for a worker** (a native toolchain, a GPU, a long-running service)? Use a
   container instead, see section 9.
+
+## 14. Not just for admins: readonly and readwrite users
+
+A boat's server usually has one admin and several other users: crew on `readwrite`, a guest
+tablet or the anonymous read access the server offers (`allow_readonly`). Routes registered
+directly on the plugin router are **admin-only**, so a plugin that does only that shows
+everyone else an empty or broken webapp. Since server **2.31.0** `router.access(level)` opens
+a single route to more users. Decide the level for each route:
+
+| Level | Routes | Examples |
+|---|---|---|
+| `readonly` | everything that only reads, and is harmless to show | lists, status, job progress, data the webapp displays |
+| `readwrite` | writes that add or change something and can't destroy anything | add an item, start a conversion, cancel a job, set a value |
+| admin (no `access()`) | destructive or server-wide actions | delete, rename, move, enable/disable, restart |
+| admin, even for a read | anything that reaches outside or leaks the host | a URL fetcher or proxy (otherwise anyone can make the boat fetch any URL), file-system paths, logs with secrets, credentials |
+
+`readonly` includes anonymous visitors when the server allows read-only access (the server
+gives them the `readonly` principal), so a `readonly` route is public on those servers. A
+`readwrite` user also passes `readonly` routes. `GET /plugins/<id>` and `/plugins/<id>/config`
+stay admin-only whatever you register.
+
+```ts
+import type { AccessScopedRouter, PluginRouter, RouteAccessLevel } from '@signalk/server-api'
+
+// Servers before 2.31.0 have no access(); there every route stays admin-only.
+function accessRouter(router: PluginRouter, level: RouteAccessLevel): AccessScopedRouter {
+  if (typeof (router as Partial<PluginRouter>).access === 'function') return router.access(level)
+  const r: AccessScopedRouter = {
+    get: (p, ...h) => (router.get(p, ...h), r),
+    post: (p, ...h) => (router.post(p, ...h), r),
+    put: (p, ...h) => (router.put(p, ...h), r),
+    patch: (p, ...h) => (router.patch(p, ...h), r),
+    delete: (p, ...h) => (router.delete(p, ...h), r),
+  }
+  return r
+}
+
+registerWithRouter(router: PluginRouter) {
+  const readonly = accessRouter(router, 'readonly')
+  const readwrite = accessRouter(router, 'readwrite')
+  readonly.get('/items', listItems)
+  readwrite.post('/items', addItem)
+  router.delete('/items/:id', deleteItem) // admin only
+}
+```
+
+**The webapp shows everything and greys out what the user can't do.** Don't hide controls,
+because then a crew member never learns a feature exists or why it's missing. The server
+enforces the levels anyway; the webapp only avoids a click that ends in a 401/403:
+
+- Ask `GET /skServer/loginStatus` once at load. Without security, `authenticationRequired` is
+  `false`, so treat the user as admin. Signed in (`status: 'loggedIn'`), use `userLevel`
+  (`admin`, `readwrite` or `readonly`). Not signed in, the user is `readonly` if
+  `readOnlyAccess` is `true`, otherwise nothing.
+- Mark each control that changes something with the level it needs (`data-needs="readwrite"`
+  or `"admin"`), render it disabled and greyed out below that level, and stop clicks, drops and
+  Enter/Space on it in a capturing listener, so a handler can't run by accident.
+- Show a banner for anything below admin: what this user can do and what needs a higher level,
+  with a sign-in link (`/admin/#/login`).
+- Still handle a 401/403 from a route with a clear message. A token can expire while the page
+  is open.
+
+Test the level of every route: register the routes against a fake router that records
+`access()` calls and check each path and method against the table, plus one run with a router
+without `access()` that keeps everything admin-only. A route that slides from admin to
+`readonly` in a refactor is a security bug no other test catches.
+
+*`PluginRouter.access()` checked in `@signalk/server-api` 2.31.0 through 2.37.0; the route
+permission check and `loginStatus` fields in signalk-server master `src/tokensecurity.ts`,
+November 2026. Pattern from dirkwa/signalk-charts-provider-simple#285.*
 
 ## Testing
 
