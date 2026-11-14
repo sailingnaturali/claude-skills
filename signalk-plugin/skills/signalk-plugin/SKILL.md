@@ -706,8 +706,10 @@ plugin config.
   on-screen keyboard covers half the screen and hides the field being edited.
 - In the **plugin config form** (the admin UI renders your schema with react-jsonschema-form),
   steer the widgets with `uiSchema`. `'ui:widget': 'radio'` shows an `enum` as tap targets
-  instead of a dropdown. `'updown'` or `'range'` with the schema's `minimum`/`maximum`/
-  `multipleOf` gives a number without typing. Booleans already render as checkboxes:
+  instead of a dropdown. `'range'` with the schema's `minimum`/`maximum`/`multipleOf` gives
+  a slider for a number. Avoid `'updown'`: it is a native number input, whose spinner arrows
+  touch browsers often don't show, so the user is back to the keyboard. Booleans already
+  render as checkboxes:
 
   ```ts
   uiSchema: () => ({
@@ -716,7 +718,7 @@ plugin config.
   }),
   ```
 
-  For a config that needs more (pick from live data, a map, a bigger layout), ship your own
+  For a config that needs more (`−`/`+` steppers, pick from live data, a map, a bigger layout), ship your own
   panel: a Module Federation module exposing `./PluginConfigurationPanel`, with the
   `signalk-plugin-configurator` keyword. See the server's
   [webapp docs](https://github.com/SignalK/signalk-server/blob/master/docs/develop/webapps.md).
