@@ -652,6 +652,15 @@ enforces the levels anyway; the webapp only avoids a click that ends in a 401/40
 - Still handle a 401/403 from a route with a clear message. A token can expire while the page
   is open.
 
+**Serve the webapp from `public/`, not from the plugin router.** With the `signalk-webapp`
+keyword the server serves the package's `public/` at **`/<package-name>/`** to every user, and
+the admin UI's Webapps list links there. Under `/plugins/<id>/` everything you didn't open
+with `access()` is admin-only, and `/plugins/<id>/` itself and `/config` can never be opened,
+so a page served from the router (`router.use(express.static(…))`) or a link into
+`/plugins/<id>/` locks out every non-admin. Point every link to the UI at `/<package-name>/`
+and keep only the API under `/plugins/<id>/…`. The server doesn't read any `package.json`
+setting that moves the webapp (`signalk.webapp.location`, for example).
+
 Test the level of every route: register the routes against a fake router that records
 `access()` calls and check each path and method against the table, plus one run with a router
 without `access()` that keeps everything admin-only. A route that slides from admin to
