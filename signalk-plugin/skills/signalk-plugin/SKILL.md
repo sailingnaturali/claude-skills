@@ -1,6 +1,6 @@
 ---
 name: signalk-plugin
-description: Use when authoring and publishing a SignalK server plugin to npm — the @signalk/server-api patterns that actually work (resource provider vs router, deltas, vessel position), the ESM package scaffold, TypeBox config schemas (which package, and why), webapp state that survives navigation, typechecking a Vite build (Vite only transpiles, so type errors accumulate invisibly), the app icon that 404s because a Vite root disables the default publicDir, the no-install-scripts rule (app-store installs pass --ignore-scripts and npm 12 gates dependency scripts — containerize heavy parts instead), plugin-to-plugin coordination through PropertyValues, metadata for the paths a plugin publishes (units, description, display category, event vs periodic and timeout, so data-timeout enforcement doesn't blank them), moving heavy or synchronous work to a worker thread so it doesn't stall the server's event loop, opening routes to readonly and readwrite users instead of admins only (router.access, a webapp that greys out what the user can't do), and npm OIDC trusted publishing (including the new-package first-publish chicken-and-egg).
+description: Use when authoring and publishing a SignalK server plugin to npm — the @signalk/server-api patterns that actually work (resource provider vs router, deltas, vessel position), the ESM package scaffold, TypeBox config schemas (which package, and why), webapp state that survives navigation, typechecking a Vite build (Vite only transpiles, so type errors accumulate invisibly), the app icon that 404s because a Vite root disables the default publicDir, the no-install-scripts rule (app-store installs pass --ignore-scripts and npm 12 gates dependency scripts — containerize heavy parts instead), plugin-to-plugin coordination through PropertyValues, metadata for the paths a plugin publishes (units, description, display category, event vs periodic and timeout, so data-timeout enforcement doesn't blank them), moving heavy or synchronous work to a worker thread so it doesn't stall the server's event loop, opening routes to readonly and readwrite users instead of admins only (router.access, a webapp that greys out what the user can't do), plugins that run on install with working defaults (enabled-by-default, merging schema defaults the server doesn't apply), touch-first webapps and config forms, and npm OIDC trusted publishing (including the new-package first-publish chicken-and-egg).
 ---
 
 # Author & publish a SignalK plugin
@@ -660,6 +660,72 @@ without `access()` that keeps everything admin-only. A route that slides from ad
 *`PluginRouter.access()` checked in `@signalk/server-api` 2.31.0 through 2.37.0; the route
 permission check and `loginStatus` fields in signalk-server master `src/tokensecurity.ts`,
 November 2026. Pattern from dirkwa/signalk-charts-provider-simple#285.*
+
+## 15. Works on install, operable by touch
+
+Most users install from the App Store and never read a README. Many of them run the
+server's apps on a touchscreen at the helm: wet fingers, a moving boat, no keyboard. A plugin
+that needs a config session before it does anything, or a form that needs typing, is one
+most of them never get working.
+
+**Start without configuration where you can.**
+
+- Add **`"signalk-plugin-enabled-by-default": true`** to `package.json` when the plugin can run
+  usefully with its defaults. The server reads it only for a plugin that has never been
+  configured (no options file). It then saves `{ enabled: true, configuration: {} }` and starts
+  the plugin at the next server start. Leave it out when the plugin can't run without an
+  answer from the user (credentials, which device to talk to). Starting into an error is worse
+  than staying off.
+- **Your schema's `default`s are not applied at runtime.** They only seed the admin-UI form, so
+  a plugin enabled by default gets `start({})`. Merge them yourself:
+
+  ```ts
+  import { Value } from 'typebox/value'
+
+  start(raw) {
+    const config: Config = Value.Default(ConfigSchema, structuredClone(raw)) as Config
+  ```
+
+  `Value.Default` fills missing properties, including nested objects that carry a `default: {}`,
+  and keeps the values the user set.
+- **Pick defaults that work on a typical boat**: the standard Signal K paths, `vessels.self`,
+  intervals a Pi can sustain. Find what you can find yourself (sources on the bus, paths that
+  carry data, devices on the network) instead of asking for it.
+- When you do need input, **say so in the plugin status** (`app.setPluginStatus('Choose a
+  radar in the plugin config')`), so the user isn't left to guess why nothing happens.
+
+**Build for a finger, not a mouse and keyboard.** This applies to the webapp and to the
+plugin config.
+
+- Touch targets at least **44 × 44 CSS px** with space between them. Nothing that works only on
+  hover. `touch-action: manipulation` on controls, so a quick second tap isn't taken as a
+  zoom.
+- **Choose, don't type.** Use chips or segmented buttons for a choice among a few options,
+  `−`/`+` steppers for numbers with a sensible step, and toggles for on/off. Pick a path from
+  the paths the server actually has (`/signalk/v1/api/vessels/self`) instead of typing one. An
+  on-screen keyboard covers half the screen and hides the field being edited.
+- In the **plugin config form** (the admin UI renders your schema with react-jsonschema-form),
+  steer the widgets with `uiSchema`. `'ui:widget': 'radio'` shows an `enum` as tap targets
+  instead of a dropdown. `'updown'` or `'range'` with the schema's `minimum`/`maximum`/
+  `multipleOf` gives a number without typing. Booleans already render as checkboxes:
+
+  ```ts
+  uiSchema: () => ({
+    sensitivity: { 'ui:widget': 'radio' },
+    intervalSeconds: { 'ui:widget': 'range' },
+  }),
+  ```
+
+  For a config that needs more (pick from live data, a map, a bigger layout), ship your own
+  panel: a Module Federation module exposing `./PluginConfigurationPanel`, with the
+  `signalk-plugin-configurator` keyword. See the server's
+  [webapp docs](https://github.com/SignalK/signalk-server/blob/master/docs/develop/webapps.md).
+- **Test it with touch emulation.** In Playwright, use a context with `hasTouch: true` and
+  `isMobile: true`, and drive it with `tap()`. In Chrome DevTools, use device mode. Check that every
+  setting can be changed without the keyboard.
+
+*Enabled-by-default handling and `start({})` checked against signalk-server master
+`src/interfaces/plugins.ts`, November 2026. `Value.Default` checked with `typebox` 1.x.*
 
 ## Testing
 
