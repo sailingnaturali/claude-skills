@@ -771,7 +771,11 @@ The rules that would have caught them:
 - **Stream with one listener per response.** Every route goes through the server's
   `compression()` middleware, so `res.off('drain', …)` does not remove what `res.on` added.
   Register one `drain` and one `close` listener per response and wake the waiting write from
-  them, or use `stream.pipeline`. A `MaxListenersExceededWarning` in the log is this leak.
+  them, or use `stream.pipeline`. Node warns with `MaxListenersExceededWarning` the first time
+  one emitter gets more than 10 listeners (the default limit) for one event, for any reason,
+  and says "11" however many pile up after that. When the warning names
+  `drain` listeners on a `Gzip` or `BrotliCompress` stream, as in tracks#253, check whether
+  the code adds a listener for each write it waits on.
 - **Keep big data on disk and read the slice a request needs.** A forecast, chart or track
   store held whole in memory costs that much RAM for as long as the plugin runs. Reading the
   cells or rows one answer needs costs a read.
@@ -799,10 +803,11 @@ The rules that would have caught them:
     as empty from then on, so hand over only what the sender is done with;
   - or, when both threads must keep the data, run a full GC in the receiving thread after it
     replaces one. That frees the old buffer once the main thread that relayed it has
-    collected its own object too; the server's busy main thread does that on its own, an idle
-    relaying thread would need the same GC. Node only exposes `gc()` with `--expose-gc`,
-    which a plugin can't pass; weather-router-plus sets the flag at run time and takes `gc`
-    from a fresh `vm` context
+    collected its own object too. The server's busy main thread does that on its own, though
+    not at a set time (within two hours in weather-router-plus#113); an idle relaying thread
+    would need the same GC. If memory must stay bounded at every moment, reuse or transfer
+    instead. Node only exposes `gc()` with `--expose-gc`, which a plugin can't pass;
+    weather-router-plus sets the flag at run time and takes `gc` from a fresh `vm` context
     ([#114](https://github.com/motamman/signalk-weather-router-plus/pull/114)).
 - **Run it for a day before you ship, and use it while it runs.** Run the plugin for 24 hours
   on a Pi with real data (AIS in a harbour, the sources it reads), and call its routes and
@@ -810,10 +815,14 @@ The rules that would have caught them:
   anything. Every 10 minutes, log `heapUsed`, `external` and `arrayBuffers` of the main
   thread and of each worker, and `rss` once for the process. Native memory such as the SQLite
   page cache shows only in `rss`. A rise in `rss` that levels off can be pages V8 and the C
-  allocator keep after freeing; growth that goes on through the whole run is a leak.
-  Garbage that an idle thread hasn't collected yet looks like a leak too, so force a full GC
-  before you call it one: with the inspector open, run `HeapProfiler.collectGarbage` in the
-  main thread and in each worker. What is still there after that is the leak.
+  allocator keep after freeing; growth that goes on through the whole run points to a leak.
+  Garbage that an idle thread hasn't collected yet looks like a leak too, so at several
+  points in the run force a full GC and note the numbers right after: with the inspector
+  open, run `HeapProfiler.collectGarbage` in the main thread and in each worker. What is
+  left after a GC is live data, much of it kept on purpose, so one reading can't tell a leak
+  from data the plugin needs. Compare these readings under the same load (between exports,
+  say): a baseline that keeps rising points to a leak, or to state kept on purpose that has
+  no bound.
 
 *SharedArrayBuffer and transfer behaviour measured with Node 24.14.1 and 26.13.1 (the server
 image's), November 2026.*
