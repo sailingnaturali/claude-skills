@@ -35,7 +35,9 @@ updates erase it — plus a `CACHEDIR.TAG` on cache directories so backups skip 
 the history is never trimmed and the cap is server-wide), **metadata for the paths a plugin
 publishes** (units, display category, and whether silence means lost or unchanged, set with
 `setDefaultMetadata` so data-timeout enforcement doesn't blank them), **heavy or synchronous
-work in a worker thread** so it doesn't stall the event loop every plugin shares, **routes for readonly and readwrite
+work in a worker thread** so it doesn't stall the event loop every plugin shares, **bounded
+memory** so one plugin can't get the whole server OOM-killed (limits on caches, queues and
+requests, each worker's memory watched, shared buffers an idle worker keeps alive), **routes for readonly and readwrite
 users**, not just admins, with a webapp that greys out what the user can't do, **plugins that work on
 install** (enabled-by-default, schema defaults merged in `start()`) with **touch-first** webapps
 and config forms, npm

@@ -1,6 +1,6 @@
 ---
 name: signalk-plugin
-description: Use when authoring and publishing a SignalK server plugin to npm — the @signalk/server-api patterns that actually work (resource provider vs router, deltas, vessel position), the ESM package scaffold, TypeBox config schemas (which package, and why), webapp state that survives navigation, typechecking a Vite build (Vite only transpiles, so type errors accumulate invisibly), the app icon that 404s because a Vite root disables the default publicDir, the no-install-scripts rule (app-store installs pass --ignore-scripts and npm 12 gates dependency scripts — containerize heavy parts instead), plugin-to-plugin coordination through PropertyValues, metadata for the paths a plugin publishes (units, description, display category, event vs periodic and timeout, so data-timeout enforcement doesn't blank them), moving heavy or synchronous work to a worker thread so it doesn't stall the server's event loop, opening routes to readonly and readwrite users instead of admins only (router.access, a webapp that greys out what the user can't do), plugins that run on install with working defaults (enabled-by-default, merging schema defaults the server doesn't apply), touch-first webapps and config forms, and npm OIDC trusted publishing (including the new-package first-publish chicken-and-egg).
+description: Use when authoring and publishing a SignalK server plugin to npm — the @signalk/server-api patterns that actually work (resource provider vs router, deltas, vessel position), the ESM package scaffold, TypeBox config schemas (which package, and why), webapp state that survives navigation, typechecking a Vite build (Vite only transpiles, so type errors accumulate invisibly), the app icon that 404s because a Vite root disables the default publicDir, the no-install-scripts rule (app-store installs pass --ignore-scripts and npm 12 gates dependency scripts — containerize heavy parts instead), plugin-to-plugin coordination through PropertyValues, metadata for the paths a plugin publishes (units, description, display category, event vs periodic and timeout, so data-timeout enforcement doesn't blank them), moving heavy or synchronous work to a worker thread so it doesn't stall the server's event loop, bounded memory so one plugin can't get the whole server OOM-killed, opening routes to readonly and readwrite users instead of admins only (router.access, a webapp that greys out what the user can't do), plugins that run on install with working defaults (enabled-by-default, merging schema defaults the server doesn't apply), touch-first webapps and config forms, and npm OIDC trusted publishing (including the new-package first-publish chicken-and-egg).
 ---
 
 # Author & publish a SignalK plugin
@@ -580,7 +580,8 @@ parentPort!.on('message', (job) => {
   V8 old-generation heap, which ends the worker when a job builds too many objects.
   `ArrayBuffer`s, `Buffer`s and native memory (the SQLite page cache, image libraries) sit
   outside that heap and count against the whole server process. Bound how big a job and its
-  result may get too (file size, row count, `LIMIT` on queries).
+  result may get too (file size, row count, `LIMIT` on queries). Section 16 covers memory
+  across the whole server.
 - **Bound the queue.** If jobs arrive faster than the worker finishes them, messages pile up
   on the main heap. Cap the pending jobs (or their bytes), and drop or merge jobs past the cap
   instead of letting memory grow.
@@ -737,6 +738,94 @@ plugin config.
 
 *Enabled-by-default handling and `start({})` checked against signalk-server master
 `src/interfaces/plugins.ts`, November 2026. `Value.Default` checked with `typebox` 1.x.*
+
+## 16. Memory: when it runs out, the boat loses the whole server
+
+Every plugin runs inside the server's one Node process, and on a boat computer that process
+is usually the one using the most memory. So when memory runs out, the kernel's OOM killer
+(or earlyoom, where it is installed, which acts earlier) kills **the server**. Every plugin
+goes with it, along with the feed to the chartplotters, the anchor alarm and the NMEA 2000
+output an autopilot may be steering by. The user sees "Signal K restarted" and never learns
+which plugin did it. These were all found on one boat's Raspberry Pi:
+
+- A history request with no time window read the vessel's whole retained track (2.02 million
+  positions after a history import) in one piece. The server grew from 1.27 to 1.9 GB and
+  earlyoom killed it ([SignalK/tracks#237](https://github.com/SignalK/tracks/pull/237)).
+- A compressed GPX export waited for `drain` with a fresh listener each time and took it off
+  with `res.off`. The server's `compression()` middleware sends `drain` listeners to its own
+  stream but leaves `res.off` alone, so none came off, and each held the day it waited to
+  send: 442 MB of heap ([SignalK/tracks#253](https://github.com/SignalK/tracks/pull/253)).
+- A weather plugin's idle worker thread kept every shared buffer it had replaced, about 79 MiB
+  every three hours
+  ([signalk-weather-router-plus#113](https://github.com/motamman/signalk-weather-router-plus/issues/113)).
+
+The rules that would have caught them:
+
+- **Bound everything that grows with time or data.** That means maps keyed by vessel context
+  (a busy harbour has hundreds of AIS targets, and over a week thousands come and go), caches,
+  job and retry queues, and per-client state. Give a cache a byte budget and evict, and drop
+  entries for contexts not seen for a while.
+- **Bound every request.** A route or query that can be asked for "everything" will be, by a
+  client you didn't write. Default to a window (time, area, a row `LIMIT`) and cap the
+  maximum. Stream large responses instead of building them in memory.
+- **Stream with one listener per response.** Every route goes through the server's
+  `compression()` middleware, so `res.off('drain', …)` does not remove what `res.on` added.
+  Register one `drain` and one `close` listener per response and wake the waiting write from
+  them, or use `stream.pipeline`. Node warns with `MaxListenersExceededWarning` the first time
+  one emitter gets more than 10 listeners (the default limit) for one event, for any reason,
+  and says "11" however many pile up after that. When the warning names
+  `drain` listeners on a `Gzip` or `BrotliCompress` stream, as in tracks#253, check whether
+  the code adds a listener for each write it waits on.
+- **Keep big data on disk and read the slice a request needs.** A forecast, chart or track
+  store held whole in memory costs that much RAM for as long as the plugin runs. Reading the
+  cells or rows one answer needs costs a read.
+- **Clean up in `stop()`.** The server runs `stop()` and then `start()` on every config save
+  (section 13). Timers, subscriptions, listeners on `app` or on streams, workers and open
+  files that `stop()` leaves behind are kept once more with every save.
+- **Watch each thread on its own.** In a worker, `process.memoryUsage()` gives that thread's
+  `heapUsed` and `external`; `rss` is the whole process. The main thread's numbers don't
+  include a worker's, so have each worker send its numbers to the main thread's debug log or
+  status. A buffer counts in the `arrayBuffers` of the thread whose allocator made it, for as
+  long as any thread holds it, shared or transferred. In the weather plugin above, the worker
+  that allocated the buffers read 282 MiB while the idle worker keeping them alive read 64.
+- **Mind what a `SharedArrayBuffer` costs when you replace it.** Its memory is freed only after
+  every thread that held it has collected its object, the main thread that relayed it
+  included. V8 does not count a `SharedArrayBuffer` that arrived from another thread toward
+  the receiving thread's memory, so replacing one there never makes that thread collect, and
+  a worker idle between jobs allocates almost nothing and keeps every replaced buffer.
+  Measured: a worker replaced a 40 MiB buffer 20 times and handed each through the main
+  thread to an idle worker. As a `SharedArrayBuffer` that left 800 MiB alive. Moved with
+  `postMessage(msg, [buf])` as a plain `ArrayBuffer`, it stayed at 80–120 MiB over 40 rounds,
+  because the receiver counts a transferred buffer and collects it. So:
+  - allocate a shared buffer once and reuse it, if no thread can be reading it while you
+    write;
+  - or transfer plain buffers. A transfer detaches the buffer in the sender, which reads it
+    as empty from then on, so hand over only what the sender is done with;
+  - or, when both threads must keep the data, run a full GC in the receiving thread after it
+    replaces one. That frees the old buffer once the main thread that relayed it has
+    collected its own object too. The server's busy main thread does that on its own, though
+    not at a set time (within two hours in weather-router-plus#113); an idle relaying thread
+    would need the same GC. If memory must stay bounded at every moment, reuse or transfer
+    instead. Node only exposes `gc()` with `--expose-gc`, which a plugin can't pass;
+    weather-router-plus sets the flag at run time and takes `gc` from a fresh `vm` context
+    ([#114](https://github.com/motamman/signalk-weather-router-plus/pull/114)).
+- **Run it for a day before you ship, and use it while it runs.** Run the plugin for 24 hours
+  on a Pi with real data (AIS in a harbour, the sources it reads), and call its routes and
+  exports during that time: neither tracks incident shows in a run where nothing asks for
+  anything. Every 10 minutes, log `heapUsed`, `external` and `arrayBuffers` of the main
+  thread and of each worker, and `rss` once for the process. Native memory such as the SQLite
+  page cache shows only in `rss`. A rise in `rss` that levels off can be pages V8 and the C
+  allocator keep after freeing; growth that goes on through the whole run points to a leak.
+  Garbage that an idle thread hasn't collected yet looks like a leak too, so at several
+  points in the run force a full GC and note the numbers right after: with the inspector
+  open, run `HeapProfiler.collectGarbage` in the main thread and in each worker. What is
+  left after a GC is live data, much of it kept on purpose, so one reading can't tell a leak
+  from data the plugin needs. Compare these readings under the same load (between exports,
+  say): a baseline that keeps rising points to a leak, or to state kept on purpose that has
+  no bound.
+
+*SharedArrayBuffer and transfer behaviour measured with Node 24.14.1 and 26.13.1 (the server
+image's), November 2026.*
 
 ## Testing
 
