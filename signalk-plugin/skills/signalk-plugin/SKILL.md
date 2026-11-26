@@ -641,17 +641,40 @@ registerWithRouter(router: PluginRouter) {
 because then a crew member never learns a feature exists or why it's missing. The server
 enforces the levels anyway; the webapp only avoids a click that ends in a 401/403:
 
-- Ask `GET /skServer/loginStatus` once at load. Without security, `authenticationRequired` is
-  `false`, so treat the user as admin. Signed in (`status: 'loggedIn'`), use `userLevel`
+- Ask `GET /skServer/loginStatus` once at load, and read it only from a 2xx answer: the
+  endpoint is rate limited, and a 429 body has no `authenticationRequired`, which would read as
+  security off. Fields that don't apply are left out, so a missing flag means `false`.
+  Without security, `authenticationRequired` is `false`, so treat the user as admin. Signed in (`status: 'loggedIn'`), use `userLevel`
   (`admin`, `readwrite` or `readonly`). Not signed in, the user is `readonly` if
   `readOnlyAccess` is `true`, otherwise nothing.
 - Mark each control that changes something with the level it needs (`data-needs="readwrite"`
   or `"admin"`), render it disabled and greyed out below that level, and stop clicks, drops and
   Enter/Space on it in a capturing listener, so a handler can't run by accident.
 - Show a banner for anything below admin: what this user can do and what needs a higher level,
-  with a sign-in link (`/admin/#/login`).
-- Still handle a 401/403 from a route with a clear message. A token can expire while the page
-  is open.
+  with a sign-in link (`/admin/#/login?redirect=<path>`, see below).
+- Still handle a 401/403 from a route. A session can expire while the page is open, so ask
+  `loginStatus` again: `notLoggedIn` with security on means sign in again; `loggedIn` means the
+  level is too low, so say so instead of sending the user into a sign-in that changes nothing.
+  Without security a 401 has no sign-in to offer either (the server still refuses some admin
+  operations).
+
+**Use the server's session; don't build a sign-in.** The login sets an HttpOnly session cookie
+that every webapp on the server shares, the Admin UI included. A webapp under `/<package-name>/`
+is on the server's origin, so `fetch` and WebSocket connections send it without any token
+handling. Don't keep a token in `localStorage` or send it as a header or `?token=`: a webapp that
+logs in with its own token also sets the shared cookie and confuses the other webapps'
+sessions. To sign in, send the browser to `/admin/#/login?redirect=` plus the
+`encodeURIComponent` of the current path, search and hash; after a form or OIDC login the server
+sends it back. The `redirect` must be a same-origin path starting with a single `/`, anything
+else is silently ignored. With OIDC only, `/signalk/v1/auth/oidc/login?redirect=…` skips the
+Admin UI.
+
+During development, have the dev server proxy everything it doesn't serve itself to the
+SignalK server, WebSockets included, so the webapp stays on one origin and the cookie,
+`loginStatus` and the redirect work as in production. Calling the server from another origin
+instead needs `credentials: 'include'` and that origin in the server's `allowedCorsOrigins`, the
+redirect can't come back to it, and the cookie is `SameSite=Strict`, so from another host or
+scheme every request arrives signed out.
 
 **Serve the webapp from `public/`, not from the plugin router.** With the `signalk-webapp`
 keyword the server serves the package's `public/` at **`/<package-name>/`** to every user, and
@@ -668,7 +691,8 @@ without `access()` that keeps everything admin-only. A route that slides from ad
 `readonly` in a refactor is a security bug no other test catches.
 
 *`PluginRouter.access()` checked in `@signalk/server-api` 2.31.0 through 2.37.0; the route
-permission check and `loginStatus` fields in signalk-server master `src/tokensecurity.ts`,
+permission check, `loginStatus` fields and session cookie in signalk-server master
+`src/tokensecurity.ts`, the login redirect and `loginStatus` in `docs/develop/webapps.md`,
 November 2026. Pattern from dirkwa/signalk-charts-provider-simple#285.*
 
 ## 15. Works on install, operable by touch
